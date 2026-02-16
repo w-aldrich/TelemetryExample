@@ -1,0 +1,12 @@
+{
+  "vehicleId": "vehicle-123",
+  "timestamp": 1708000000000,
+  "speed": 88.5,
+  "engineRpm": 3200,
+  "engineTemp": 95.2,
+  "fuelLevel": 45.7,
+  "location": {
+    "latitude": 40.7128,
+    "longitude": -74.0060
+  }
+}

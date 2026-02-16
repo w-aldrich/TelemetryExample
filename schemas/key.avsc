@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "TelemetryKey",
+  "namespace": "com.example.avro",
+  "fields": [
+    {
+      "name": "vehicleId",
+      "type": "string"
+    }
+  ]
+}
