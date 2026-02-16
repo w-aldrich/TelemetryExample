@@ -1,0 +1,176 @@
+{
+  "type": "record",
+  "name": "TelemetryValue",
+  "namespace": "com.example.avro",
+  "fields": [
+    { "name": "eventId", "type": "string" },
+    { "name": "eventTimestamp", "type": "long" },
+    {
+      "name": "vehicleInfo",
+      "type": {
+        "type": "record",
+        "name": "VehicleInfo",
+        "fields": [
+          { "name": "make", "type": "string" },
+          { "name": "model", "type": "string" },
+          { "name": "year", "type": "int" },
+          { "name": "engineType", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "TelemetryType",
+      "type": "enum",
+      "symbols": [
+        "SPEED",
+        "ENGINE",
+        "FUEL",
+        "LOCATION",
+        "TIRE_PRESSURE",
+        "BATTERY",
+        "BRAKE",
+        "ACCELERATION",
+        "ODOMETER",
+        "DIAGNOSTIC",
+        "WEATHER",
+        "ROAD_CONDITION",
+        "TRAFFIC",
+        "INFRASTRUCTURE",
+        "MOBILE_DEVICE"
+      ]
+    },
+
+    {
+      "name": "payload",
+      "type": [
+        {
+          "type": "record",
+          "name": "SpeedTelemetry",
+          "fields": [
+            { "name": "speedKph", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "EngineTelemetry",
+          "fields": [
+            { "name": "rpm", "type": "int" },
+            { "name": "engineTempC", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "FuelTelemetry",
+          "fields": [
+            { "name": "fuelLevelPercent", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "LocationTelemetry",
+          "fields": [
+            { "name": "latitude", "type": "double" },
+            { "name": "longitude", "type": "double" },
+            { "name": "altitudeMeters", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "TirePressureTelemetry",
+          "fields": [
+            { "name": "frontLeftPsi", "type": "double" },
+            { "name": "frontRightPsi", "type": "double" },
+            { "name": "rearLeftPsi", "type": "double" },
+            { "name": "rearRightPsi", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "BatteryTelemetry",
+          "fields": [
+            { "name": "voltage", "type": "double" },
+            { "name": "currentAmps", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "BrakeTelemetry",
+          "fields": [
+            { "name": "brakePadWearPercent", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "AccelerationTelemetry",
+          "fields": [
+            { "name": "xAxis", "type": "double" },
+            { "name": "yAxis", "type": "double" },
+            { "name": "zAxis", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "OdometerTelemetry",
+          "fields": [
+            { "name": "totalKilometers", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "DiagnosticTelemetry",
+          "fields": [
+            { "name": "errorCode", "type": "string" },
+            { "name": "severity", "type": "string" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "WeatherTelemetry",
+          "fields": [
+            { "name": "temperatureC", "type": "double" },
+            { "name": "humidityPercent", "type": "double" },
+            { "name": "windSpeedKph", "type": "double" },
+            { "name": "precipitationMm", "type": "double" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "RoadConditionTelemetry",
+          "fields": [
+            { "name": "surfaceType", "type": "string" },
+            { "name": "surfaceTemperatureC", "type": "double" },
+            { "name": "hazardDetected", "type": "boolean" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "TrafficTelemetry",
+          "fields": [
+            { "name": "congestionLevel", "type": "int" },
+            { "name": "averageSpeedKph", "type": "double" },
+            { "name": "incidentReported", "type": "boolean" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "InfrastructureTelemetry",
+          "fields": [
+            { "name": "sensorId", "type": "string" },
+            { "name": "signalStrength", "type": "double" },
+            { "name": "status", "type": "string" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "MobileDeviceTelemetry",
+          "fields": [
+            { "name": "deviceId", "type": "string" },
+            { "name": "batteryLevelPercent", "type": "double" },
+            { "name": "networkType", "type": "string" },
+            { "name": "appVersion", "type": "string" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 package com.example.model;
 
-import com.example.util.Deserialization.Errors.DeserializationError;
+import com.example.util.deserialization.errors.DeserializationError;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.Optional;

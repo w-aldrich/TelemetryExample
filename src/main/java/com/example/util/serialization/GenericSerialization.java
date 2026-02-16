@@ -1,4 +1,4 @@
-package com.example.util.Serialization;
+package com.example.util.serialization;
 
 import com.example.model.KafkaRecord;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;

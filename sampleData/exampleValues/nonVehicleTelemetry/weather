@@ -1,0 +1,19 @@
+{
+  "eventId": "evt-weather-001",
+  "eventTimestamp": 1708000010000,
+  "vehicleInfo": {
+    "make": "Ford",
+    "model": "F-150",
+    "year": 2023,
+    "engineType": "V6"
+  },
+  "telemetryType": "WEATHER",
+  "payload": {
+    "com.example.avro.WeatherTelemetry": {
+      "temperatureC": 3.8,
+      "humidityPercent": 82.1,
+      "windSpeedKph": 21.4,
+      "precipitationMm": 2.6
+    }
+  }
+}

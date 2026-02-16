@@ -1,0 +1,18 @@
+{
+  "eventId": "evt-traffic-001",
+  "eventTimestamp": 1708000012000,
+  "vehicleInfo": {
+    "make": "Ford",
+    "model": "F-150",
+    "year": 2023,
+    "engineType": "V6"
+  },
+  "telemetryType": "TRAFFIC",
+  "payload": {
+    "com.example.avro.TrafficTelemetry": {
+      "congestionLevel": 8,
+      "averageSpeedKph": 28.5,
+      "incidentReported": true
+    }
+  }
+}

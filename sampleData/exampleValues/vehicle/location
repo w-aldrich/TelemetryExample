@@ -1,0 +1,18 @@
+{
+  "eventId": "evt-location-001",
+  "eventTimestamp": 1708000003000,
+  "vehicleInfo": {
+    "make": "Ford",
+    "model": "F-150",
+    "year": 2023,
+    "engineType": "V6"
+  },
+  "telemetryType": "LOCATION",
+  "payload": {
+    "com.example.avro.LocationTelemetry": {
+      "latitude": 40.7128,
+      "longitude": -74.0060,
+      "altitudeMeters": 15.3
+    }
+  }
+}

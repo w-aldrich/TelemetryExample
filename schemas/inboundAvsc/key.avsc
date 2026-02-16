@@ -1,0 +1,10 @@
+{
+  "type": "record",
+  "name": "TelemetryKey",
+  "namespace": "com.example.avro",
+  "fields": [
+    { "name": "vehicleId", "type": "string" },
+    { "name": "vin", "type": "string" },
+    { "name": "fleetId", "type": ["null", "string"], "default": null }
+  ]
+}

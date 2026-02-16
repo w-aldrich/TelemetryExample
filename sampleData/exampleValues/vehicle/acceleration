@@ -1,0 +1,18 @@
+{
+  "eventId": "evt-accel-001",
+  "eventTimestamp": 1708000007000,
+  "vehicleInfo": {
+    "make": "Ford",
+    "model": "F-150",
+    "year": 2023,
+    "engineType": "V6"
+  },
+  "telemetryType": "ACCELERATION",
+  "payload": {
+    "com.example.avro.AccelerationTelemetry": {
+      "xAxis": 0.12,
+      "yAxis": -0.03,
+      "zAxis": 9.81
+    }
+  }
+}

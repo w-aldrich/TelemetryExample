@@ -1,4 +1,4 @@
-package com.example.util.Deserialization.Errors;
+package com.example.util.deserialization.errors;
 
 import com.example.model.PartitionOffset;
 

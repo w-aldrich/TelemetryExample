@@ -1,0 +1,17 @@
+{
+  "eventId": "evt-battery-001",
+  "eventTimestamp": 1708000005000,
+  "vehicleInfo": {
+    "make": "Ford",
+    "model": "F-150",
+    "year": 2023,
+    "engineType": "V6"
+  },
+  "telemetryType": "BATTERY",
+  "payload": {
+    "com.example.avro.BatteryTelemetry": {
+      "voltage": 12.7,
+      "currentAmps": 48.3
+    }
+  }
+}

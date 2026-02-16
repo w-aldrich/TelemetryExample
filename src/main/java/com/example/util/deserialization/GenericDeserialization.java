@@ -1,19 +1,21 @@
-package com.example.util.Deserialization;
+package com.example.util.deserialization;
 
-import com.example.util.Deserialization.Errors.DeserializationError;
+import com.example.util.deserialization.errors.DeserializationError;
 import com.example.model.KafkaRecord;
 import com.example.model.PartitionOffset;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
+import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema;
+import org.apache.flink.util.Collector;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
 //TODO: Add schema configs passed into class
-public class GenericDeserialization implements KafkaDeserializationSchema<KafkaRecord> {
+public class GenericDeserialization implements KafkaRecordDeserializationSchema<KafkaRecord> {
 
     //TODO: Confirm cache exists here
     private final KafkaAvroDeserializer keyDeserializer = new KafkaAvroDeserializer();
@@ -30,14 +32,14 @@ public class GenericDeserialization implements KafkaDeserializationSchema<KafkaR
         this.topic = topic;
     }
 
-
     @Override
-    public boolean isEndOfStream(KafkaRecord kafkaRecord) {
-        return false;
+    public TypeInformation<KafkaRecord> getProducedType() {
+        // Types.POJO(KafkaRecord.class);
+        return TypeInformation.of(KafkaRecord.class);
     }
 
     @Override
-    public KafkaRecord deserialize(ConsumerRecord<byte[], byte[]> record) {
+    public void deserialize(ConsumerRecord<byte[], byte[]> record, Collector<KafkaRecord> collector) throws IOException {
         GenericRecord key;
         GenericRecord value;
         Optional<DeserializationError> keyError = Optional.empty();
@@ -76,13 +78,6 @@ public class GenericDeserialization implements KafkaDeserializationSchema<KafkaR
 
         kafkaRecord.setPartitionOffset(partition, offset);
 
-        return kafkaRecord;
-
-    }
-
-    @Override
-    public TypeInformation<KafkaRecord> getProducedType() {
-        // Types.POJO(KafkaRecord.class);
-        return TypeInformation.of(KafkaRecord.class);
+        collector.collect(kafkaRecord);
     }
 }
