@@ -48,11 +48,18 @@ public class TelemetryJob {
         DataStream<KafkaRecord> dataStream =
                 env.fromSource(source, WatermarkStrategy.noWatermarks(), appConfig.getInboundTopic());
 
-        KeyedStream<KafkaRecord, String> keyedStream = dataStream.keyBy(record ->
-                    record
+        KeyedStream<KafkaRecord, String> keyedStream = dataStream.keyBy(record -> {
+            if(!record.hasDeserializationError()) {
+                return record
                     .getKey()
                     .get("vehicleId")
-                    .toString());
+                    .toString();
+            } else {
+                throw new Exception("TODO: something here with deser error, probably side output");
+            }
+        });
+
+        // TODO: what to do with tombstone records?
 
         keyedStream.map(record -> {
                     GenericRecord value = record.getValue();
