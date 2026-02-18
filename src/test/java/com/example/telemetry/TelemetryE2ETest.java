@@ -1,5 +1,6 @@
 package com.example.telemetry;
 
+import com.example.model.telemetryEnums.TelemetryType;
 import com.example.telemetry.infraSetup.KafkaAdminHelper;
 import com.example.telemetry.infraSetup.SchemaRegistryHelper;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,9 @@ public class TelemetryE2ETest {
     @Test
     public void testEndToEnd() throws Exception {
 
+        String inboundKeyAvroPath = "schemas/inboundAvsc/key.avsc";
+        String inboundValueAvroPath = "schemas/inboundAvsc/value.avsc";
+
         // Create topic
         KafkaAdminHelper.createTopic(BOOTSTRAP, TOPIC);
 
@@ -20,22 +24,25 @@ public class TelemetryE2ETest {
         SchemaRegistryHelper.registerSchema(
                 REGISTRY,
                 TOPIC + "-key",
-                "schemas/key.avsc"
+                inboundKeyAvroPath
         );
 
         SchemaRegistryHelper.registerSchema(
                 REGISTRY,
                 TOPIC + "-value",
-                "schemas/value.avsc"
+                inboundValueAvroPath
         );
 
-//        // Produce telemetry
-//        TelemetryProducer.sendEvent(
-//                BOOTSTRAP,
-//                REGISTRY,
-//                TOPIC,
-//                "schemas/inboundAvsc/key.avsc",
-//                "schemas/inboundAvsc/value.avsc"
-//        );
+        TelemetryProducer producer =
+                new TelemetryProducer(
+                        BOOTSTRAP,
+                        REGISTRY,
+                        TOPIC,
+                        inboundKeyAvroPath,
+                        inboundValueAvroPath
+                );
+
+        producer.sendEvent(TelemetryType.SPEED);
+
     }
 }

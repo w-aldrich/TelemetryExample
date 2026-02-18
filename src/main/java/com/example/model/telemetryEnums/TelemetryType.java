@@ -15,5 +15,13 @@ public enum TelemetryType {
     ROAD_CONDITION,
     TRAFFIC,
     INFRASTRUCTURE,
-    MOBILE_DEVICE
+    MOBILE_DEVICE;
+
+    public String typeToTelemetryName() {
+        String name = this.name();
+        return
+                name.charAt(0) +
+                    name.substring(1)
+                        .toLowerCase() + "Telemetry";
+    }
 }

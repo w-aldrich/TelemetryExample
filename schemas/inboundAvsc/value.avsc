@@ -19,25 +19,28 @@
       }
     },
     {
-      "name": "TelemetryType",
-      "type": "enum",
-      "symbols": [
-        "SPEED",
-        "ENGINE",
-        "FUEL",
-        "LOCATION",
-        "TIRE_PRESSURE",
-        "BATTERY",
-        "BRAKE",
-        "ACCELERATION",
-        "ODOMETER",
-        "DIAGNOSTIC",
-        "WEATHER",
-        "ROAD_CONDITION",
-        "TRAFFIC",
-        "INFRASTRUCTURE",
-        "MOBILE_DEVICE"
-      ]
+      "name": "telemetryType",
+      "type": {
+        "name": "TelemetryInternal",
+        "type": "enum",
+        "symbols": [
+          "SPEED",
+          "ENGINE",
+          "FUEL",
+          "LOCATION",
+          "TIRE_PRESSURE",
+          "BATTERY",
+          "BRAKE",
+          "ACCELERATION",
+          "ODOMETER",
+          "DIAGNOSTIC",
+          "WEATHER",
+          "ROAD_CONDITION",
+          "TRAFFIC",
+          "INFRASTRUCTURE",
+          "MOBILE_DEVICE"
+        ]
+      }
     },
 
     {
