@@ -1,0 +1,32 @@
+{
+  "type": "record",
+  "name": "TelemetryValue",
+  "namespace": "com.example.avro",
+  "fields": [
+    {
+      "name": "averageXAcceleration",
+      "type": "double",
+      "doc": "Average XAxis acceleration on the given date taken from AccelerationTelemetry"
+    },
+    {
+      "name": "averageYAcceleration",
+      "type": "double",
+      "doc": "Average YAxis acceleration on the given date taken from AccelerationTelemetry"
+    },
+    {
+      "name": "averageZAcceleration",
+      "type": "double",
+      "doc": "Average ZAxis acceleration on the given date taken from AccelerationTelemetry"
+    },
+    {
+      "name": "averageSpeed",
+      "type": "double",
+      "doc": "Average speed on the given date taken from SpeedTelemetry"
+    },
+    {
+      "name": "totalKmDriven",
+      "type": "double",
+      "doc": "Total KM Driven on the given date taken from OdometerTelemetry"
+    }
+  ]
+}

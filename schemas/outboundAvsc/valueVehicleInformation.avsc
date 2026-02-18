@@ -1,0 +1,32 @@
+{
+  "type": "record",
+  "name": "TelemetryValue",
+  "namespace": "com.example.avro",
+  "fields": [
+    {
+      "name": "highEngineTemp",
+      "type": "double",
+      "doc": "Highest reported engine temp on the given day. Taken from EngineTelemetry"
+    },
+    {
+      "name": "lowestFuelLevelPercent",
+      "type": "double",
+      "doc": "The lowest fuel reported on the given day. Taken from FuelTelemetry"
+    },
+    {
+      "name": "averageFrontTirePressure",
+      "type": "double",
+      "doc": "Average of front left and right PSI for the given day. Taken from TirePressureTelemetry"
+    },
+    {
+      "name": "averageBackTirePressure",
+      "type": "double",
+      "doc": "Average of back left and right PSI for the given day. Taken from TirePressureTelemetry"
+    },
+    {
+      "name": "lowestBreakPadPercent",
+      "type": "double",
+      "doc": "The lowest break pad wear percent on the given day. Taken from BrakeTelemetry"
+    }
+  ]
+}
