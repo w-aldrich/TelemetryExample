@@ -19,9 +19,12 @@ public enum TelemetryType {
 
     public String typeToTelemetryName() {
         String name = this.name();
-        return
-                name.charAt(0) +
-                    name.substring(1)
-                        .toLowerCase() + "Telemetry";
+        String[] split = name.split("_");
+        StringBuilder sb = new StringBuilder();
+        for(String s: split) {
+            sb.append(s.charAt(0) + s.substring(1).toLowerCase());
+        }
+        sb.append("Telemetry");
+        return sb.toString();
     }
 }

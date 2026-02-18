@@ -42,7 +42,7 @@ public class TelemetryProducer {
         producer = new KafkaProducer<>(props);
     }
 
-    private GenericRecord setFieldNameAndValue(GenericRecord record, Object o, boolean ignoreBaseTypes) {
+    private GenericRecord setFieldNameAndValue(GenericRecord record, Object o) {
         Field[] fields = o.getClass().getDeclaredFields();
         for (Field field : fields) {
             try {
@@ -51,9 +51,6 @@ public class TelemetryProducer {
 
                 // Get the name of the field
                 String name = field.getName();
-                if(ignoreBaseTypes && (name.equals("eventId") || name.equals("eventTimestamp") || name.equals("telemetryType"))) {
-                    continue;
-                }
 
                 // Get the value of the field for the specific object instance
                 // For static fields, pass null as the object argument
@@ -70,10 +67,11 @@ public class TelemetryProducer {
     private GenericRecord keyRecord(Schema keySchema) {
         GenericRecord record = new GenericData.Record(keySchema);
         Key randomKey = new Key();
-        return setFieldNameAndValue(record, randomKey, false);
+        return setFieldNameAndValue(record, randomKey);
     }
 
     private Schema getTypeSchema(TelemetryType t) {
+
         // name is all caps, convert the rest to lowercase and then add Telemetry to the end
         return
             valueSchema.getField("payload")
@@ -116,12 +114,12 @@ public class TelemetryProducer {
         Schema vehicleSchema = valueSchema.getField("vehicleInfo").schema();
         GenericRecord vehicle = new GenericData.Record(vehicleSchema);
         BaseEvent b = (BaseEvent) blah;
-        setFieldNameAndValue(vehicle, b.getVehicleInfo(), true);
+        setFieldNameAndValue(vehicle, b.getVehicleInfo());
         record.put("vehicleInfo", vehicle);
 
         internalSchema = getTypeSchema(t);
         GenericRecord internalRecord = new GenericData.Record(internalSchema);
-        setFieldNameAndValue(internalRecord, blah, true);
+        setFieldNameAndValue(internalRecord, blah);
         record.put("payload", internalRecord);
 
         //Convert Enum
@@ -136,11 +134,16 @@ public class TelemetryProducer {
 
     public void sendEvent(TelemetryType t) throws Exception {
 
+        System.out.println("Starting to send Type: " + t.name());
         GenericRecord key = keyRecord(keySchema);
 
         GenericRecord value = valueRecord(t);
 
         producer.send(new ProducerRecord<>(topic, key, value)).get();
+        System.out.println("Completed sending Type: " + t.name());
+    }
+
+    public void closeProducer() {
         producer.close();
     }
 }

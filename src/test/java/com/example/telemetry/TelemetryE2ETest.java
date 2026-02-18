@@ -18,7 +18,11 @@ public class TelemetryE2ETest {
         String inboundValueAvroPath = "schemas/inboundAvsc/value.avsc";
 
         // Create topic
-        KafkaAdminHelper.createTopic(BOOTSTRAP, TOPIC);
+        try {
+            KafkaAdminHelper.createTopic(BOOTSTRAP, TOPIC);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
 
         // Register schemas
         SchemaRegistryHelper.registerSchema(
@@ -43,6 +47,11 @@ public class TelemetryE2ETest {
                 );
 
         producer.sendEvent(TelemetryType.SPEED);
+        producer.sendEvent(TelemetryType.ACCELERATION);
+        producer.sendEvent(TelemetryType.MOBILE_DEVICE);
+        producer.sendEvent(TelemetryType.INFRASTRUCTURE);
+
+        producer.closeProducer();
 
     }
 }
