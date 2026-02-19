@@ -5,6 +5,7 @@ import com.example.telemetry.telemetryEvents.BaseEvent;
 import com.example.telemetry.telemetryEvents.Key;
 import com.example.telemetry.telemetryEvents.nonVehicle.*;
 import com.example.telemetry.telemetryEvents.vehicle.*;
+import com.example.util.helpers.GenericRecordHelper;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -13,8 +14,6 @@ import org.apache.kafka.clients.producer.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.Properties;
 
 public class InboundProducer {
@@ -40,32 +39,8 @@ public class InboundProducer {
         producer = new KafkaProducer<>(props);
     }
 
-    private GenericRecord setFieldNameAndValue(GenericRecord record, Object o) {
-        Field[] fields = o.getClass().getDeclaredFields();
-        for (Field field : fields) {
-            try {
-                // To access private fields, you must make them accessible
-                field.setAccessible(true);
-
-                // Get the name of the field
-                String name = field.getName();
-
-                // Get the value of the field for the specific object instance
-                // For static fields, pass null as the object argument
-                Object value = field.get(Modifier.isStatic(field.getModifiers()) ? null : o);
-                record.put(name, value);
-            } catch (IllegalAccessException e) {
-                System.out.println("Error accessing field: " + field.getName());
-                e.printStackTrace();
-            }
-        }
-        return record;
-    }
-
     private GenericRecord keyRecord(Schema keySchema) {
-        GenericRecord record = new GenericData.Record(keySchema);
-        Key randomKey = new Key();
-        return setFieldNameAndValue(record, randomKey);
+        return GenericRecordHelper.fromObjectToGenericRecord(new Key(), keySchema);
     }
 
     private Schema getTypeSchema(TelemetryType t) {
@@ -110,13 +85,11 @@ public class InboundProducer {
         }
 
         Schema vehicleSchema = valueSchema.getField("vehicleInfo").schema();
-        GenericRecord vehicle = new GenericData.Record(vehicleSchema);
-        setFieldNameAndValue(vehicle, event.getVehicleInfo());
+        GenericRecord vehicle = GenericRecordHelper.fromObjectToGenericRecord(event.getVehicleInfo(), vehicleSchema);
         record.put("vehicleInfo", vehicle);
 
         internalSchema = getTypeSchema(t);
-        GenericRecord internalRecord = new GenericData.Record(internalSchema);
-        setFieldNameAndValue(internalRecord, event);
+        GenericRecord internalRecord = GenericRecordHelper.fromObjectToGenericRecord(event, internalSchema);
         record.put("payload", internalRecord);
 
         //Convert Enum
