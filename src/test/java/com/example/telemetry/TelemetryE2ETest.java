@@ -3,6 +3,7 @@ package com.example.telemetry;
 import com.example.model.telemetryEnums.TelemetryType;
 import com.example.telemetry.infraSetup.KafkaAdminHelper;
 import com.example.telemetry.infraSetup.SchemaRegistryHelper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class TelemetryE2ETest {
@@ -10,35 +11,43 @@ public class TelemetryE2ETest {
     private static final String BOOTSTRAP = "localhost:9092";
     private static final String REGISTRY = "http://localhost:8081";
     private static final String TOPIC = "telemetry-topic";
+    private static final String inboundKeyAvroPath = "schemas/inboundAvsc/key.avsc";
+    private static final String inboundValueAvroPath = "schemas/inboundAvsc/value.avsc";
 
-    @Test
-    public void testEndToEnd() throws Exception {
-
-        String inboundKeyAvroPath = "schemas/inboundAvsc/key.avsc";
-        String inboundValueAvroPath = "schemas/inboundAvsc/value.avsc";
-
-        // Create topic
+    @BeforeAll
+    public static void createTopicAndSchemas() {
+        // TODO: This try catch is just so I don't have to restart docker, fix
         try {
             KafkaAdminHelper.createTopic(BOOTSTRAP, TOPIC);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
 
-        // Register schemas
-        SchemaRegistryHelper.registerSchema(
-                REGISTRY,
-                TOPIC + "-key",
-                inboundKeyAvroPath
-        );
+        try {
+            // Register schemas
+            SchemaRegistryHelper.registerSchema(
+                    REGISTRY,
+                    TOPIC + "-key",
+                    inboundKeyAvroPath
+            );
 
-        SchemaRegistryHelper.registerSchema(
-                REGISTRY,
-                TOPIC + "-value",
-                inboundValueAvroPath
-        );
+            SchemaRegistryHelper.registerSchema(
+                    REGISTRY,
+                    TOPIC + "-value",
+                    inboundValueAvroPath
+            );
+        } catch (Exception e) {
+            System.out.println("Failed to register schemas");
+            System.out.println(e.getMessage());
+        }
 
-        TelemetryProducer producer =
-                new TelemetryProducer(
+    }
+
+    @Test
+    public void testOneOfEachEvent() throws Exception {
+
+        InboundProducer inboundProducer =
+                new InboundProducer(
                         BOOTSTRAP,
                         REGISTRY,
                         TOPIC,
@@ -46,12 +55,13 @@ public class TelemetryE2ETest {
                         inboundValueAvroPath
                 );
 
-        producer.sendEvent(TelemetryType.SPEED);
-        producer.sendEvent(TelemetryType.ACCELERATION);
-        producer.sendEvent(TelemetryType.MOBILE_DEVICE);
-        producer.sendEvent(TelemetryType.INFRASTRUCTURE);
+        for(TelemetryType t: TelemetryType.values()) {
+            inboundProducer.sendInboundEvent(t);
+        }
 
-        producer.closeProducer();
+        inboundProducer.closeProducer();
+
+        //TODO: create consumer and ensure all events are consumed properly
 
     }
 }

@@ -4,6 +4,7 @@ import com.example.model.telemetryEnums.Status;
 import com.example.model.telemetryEnums.TelemetryType;
 
 import java.security.SecureRandom;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class RandomGenerator {
@@ -32,5 +33,9 @@ public class RandomGenerator {
         Status[] vals = Status.values();
         int randomIndex = generateInt(vals.length);
         return vals[randomIndex];
+    }
+
+    public static boolean generateBoolean() {
+        return RANDOM.nextBoolean();
     }
 }

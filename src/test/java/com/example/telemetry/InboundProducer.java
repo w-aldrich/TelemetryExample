@@ -3,10 +3,8 @@ package com.example.telemetry;
 import com.example.model.telemetryEnums.TelemetryType;
 import com.example.telemetry.telemetryEvents.BaseEvent;
 import com.example.telemetry.telemetryEvents.Key;
-import com.example.telemetry.telemetryEvents.nonVehicle.Infrastructure;
-import com.example.telemetry.telemetryEvents.nonVehicle.MobileDevice;
-import com.example.telemetry.telemetryEvents.vehicle.Acceleration;
-import com.example.telemetry.telemetryEvents.vehicle.Speed;
+import com.example.telemetry.telemetryEvents.nonVehicle.*;
+import com.example.telemetry.telemetryEvents.vehicle.*;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -19,7 +17,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Properties;
 
-public class TelemetryProducer {
+public class InboundProducer {
 
     String bootstrap;
     String registry;
@@ -29,7 +27,7 @@ public class TelemetryProducer {
     Properties props = new Properties();
     Producer<Object, Object> producer;
 
-    public TelemetryProducer(String bootstrap, String registry, String topic, String keyAvroPath, String valueAvroPath) throws IOException {
+    public InboundProducer(String bootstrap, String registry, String topic, String keyAvroPath, String valueAvroPath) throws IOException {
         this.bootstrap = bootstrap;
         this.registry = registry;
         this.topic = topic;
@@ -85,7 +83,7 @@ public class TelemetryProducer {
 
     private GenericRecord valueRecord(TelemetryType t) throws Exception {
         GenericRecord record = new GenericData.Record(valueSchema);
-        Object blah;
+        BaseEvent event;
         Schema internalSchema;
 
         record.put("eventId", RandomGenerator.generateString(10));
@@ -93,33 +91,32 @@ public class TelemetryProducer {
         record.put("telemetryType", t.name());
 
         switch (t) {
-            case FUEL, BRAKE, ENGINE, BATTERY, TRAFFIC, WEATHER, LOCATION, ODOMETER, DIAGNOSTIC, TIRE_PRESSURE, ROAD_CONDITION -> {
-                throw new Exception("Unimplemented");
-            }
-            case SPEED -> {
-                blah = new Speed();
-            }
-            case ACCELERATION -> {
-                blah = new Acceleration();
-            }
-            case MOBILE_DEVICE -> {
-                blah = new MobileDevice();
-            }
-            case INFRASTRUCTURE -> {
-                blah = new Infrastructure();
-            }
+            case SPEED -> event = new Speed();
+            case ENGINE -> event = new Engine();
+            case FUEL -> event = new Fuel();
+            case LOCATION -> event = new Location();
+            case TIRE_PRESSURE -> event = new TirePressure();
+            case BATTERY -> event = new Battery();
+            case BRAKE -> event = new Brake();
+            case ACCELERATION -> event = new Acceleration();
+            case ODOMETER -> event = new Odometer();
+            case DIAGNOSTIC -> event = new Diagnostic();
+            case WEATHER -> event = new Weather();
+            case ROAD_CONDITION -> event = new RoadCondition();
+            case TRAFFIC -> event = new Traffic();
+            case INFRASTRUCTURE -> event = new Infrastructure();
+            case MOBILE_DEVICE -> event = new MobileDevice();
             default -> throw new Exception("Unimplemented");
         }
 
         Schema vehicleSchema = valueSchema.getField("vehicleInfo").schema();
         GenericRecord vehicle = new GenericData.Record(vehicleSchema);
-        BaseEvent b = (BaseEvent) blah;
-        setFieldNameAndValue(vehicle, b.getVehicleInfo());
+        setFieldNameAndValue(vehicle, event.getVehicleInfo());
         record.put("vehicleInfo", vehicle);
 
         internalSchema = getTypeSchema(t);
         GenericRecord internalRecord = new GenericData.Record(internalSchema);
-        setFieldNameAndValue(internalRecord, blah);
+        setFieldNameAndValue(internalRecord, event);
         record.put("payload", internalRecord);
 
         //Convert Enum
@@ -132,7 +129,7 @@ public class TelemetryProducer {
         return record;
     }
 
-    public void sendEvent(TelemetryType t) throws Exception {
+    public void sendInboundEvent(TelemetryType t) throws Exception {
 
         System.out.println("Starting to send Type: " + t.name());
         GenericRecord key = keyRecord(keySchema);
