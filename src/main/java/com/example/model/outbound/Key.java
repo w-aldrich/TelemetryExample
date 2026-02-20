@@ -1,4 +1,4 @@
-package com.example.outbound;
+package com.example.model.outbound;
 
 import com.example.util.helpers.GenericRecordHelper;
 import org.apache.avro.Schema;
@@ -10,9 +10,6 @@ public class Key {
     Schema keySchema;
     String vehicleId;
     long date;
-
-    public Key() {}
-
 
     public Key(String vehicleId, long date, Schema keySchema) {
         this.keySchema = keySchema;

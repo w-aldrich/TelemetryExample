@@ -2,40 +2,60 @@ package com.example.util.serialization;
 
 import com.example.model.KafkaRecord;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.streaming.connectors.kafka.KafkaSerializationSchema;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import javax.annotation.Nullable;
 import java.util.Map;
 
-public class GenericSerialization implements KafkaSerializationSchema<KafkaRecord> {
+public class GenericSerialization implements KafkaRecordSerializationSchema<KafkaRecord> {
 
-    private String destinationTopic;
+    private final String destinationTopic;
+    private final String schemaRegistryUrl;
 
-    //TODO: confirm cache
-    private KafkaAvroSerializer keySerializer;
-    private KafkaAvroSerializer valueSerializer;
+    // Not final — serializers are not serializable themselves, so we init them
+    // lazily in open() after the class is deserialized on the task manager.
+    private transient KafkaAvroSerializer keySerializer;
+    private transient KafkaAvroSerializer valueSerializer;
 
-    public GenericSerialization(String destinationTopic) {
-        Map<String, Object> config = Map.of(
-                "schema.registry.url", "http://localhost:8081",
-                "specific.avro.reader", false
-        );
-        keySerializer.configure(config, true);
-        valueSerializer.configure(config, false);
-        this.destinationTopic = destinationTopic;
+    public GenericSerialization(String destinationTopic, String schemaRegistryUrl) {
+        this.destinationTopic  = destinationTopic;
+        this.schemaRegistryUrl = schemaRegistryUrl;
     }
 
-    //TODO: actual exception information
     @Override
-    public ProducerRecord<byte[], byte[]> serialize(KafkaRecord kafkaRecord, @Nullable Long aLong) {
-       try {
-           byte[] key = keySerializer.serialize(destinationTopic, kafkaRecord.getKey());
-           byte[] value = valueSerializer.serialize(destinationTopic, kafkaRecord.getValue());
-           ProducerRecord<byte[], byte[]> outbound = new ProducerRecord<>(destinationTopic, key, value);
-           return outbound;
-       } catch (Exception e) {
-           throw e;
-       }
+    public void open(SerializationSchema.InitializationContext context, KafkaSinkContext sinkContext)
+            throws Exception {
+
+        Map<String, Object> config = Map.of(
+                "schema.registry.url", schemaRegistryUrl,
+                "specific.avro.reader", false
+        );
+
+        keySerializer = new KafkaAvroSerializer();
+        keySerializer.configure(config, true);  // isKey = true
+
+        valueSerializer = new KafkaAvroSerializer();
+        valueSerializer.configure(config, false); // isKey = false
+    }
+
+    @Override
+    public ProducerRecord<byte[], byte[]> serialize(KafkaRecord kafkaRecord, KafkaSinkContext kafkaSinkContext, Long aLong) {
+        try {
+
+            GenericRecord keyRecord = kafkaRecord.getKey();
+            byte[] key = keySerializer.serialize(destinationTopic, keyRecord);
+
+            GenericRecord valueRecord = kafkaRecord.getValue();
+            byte[] value = valueSerializer.serialize(destinationTopic, valueRecord);
+
+            return new ProducerRecord<>(destinationTopic, key, value);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Serialization failed for topic " + destinationTopic, e);
+        }
     }
 }

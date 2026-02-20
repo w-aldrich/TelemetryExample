@@ -1,5 +1,7 @@
 package com.example.model.telemetryEnums;
 
+import org.apache.avro.generic.GenericRecord;
+
 public enum TelemetryType {
     SPEED,
     ENGINE,
@@ -17,6 +19,9 @@ public enum TelemetryType {
     INFRASTRUCTURE,
     MOBILE_DEVICE;
 
+    public static TelemetryType fromGRToType(GenericRecord gr) {
+        return TelemetryType.valueOf(gr.get("TelemetryType").toString());
+    }
     public String typeToTelemetryName() {
         String name = this.name();
         String[] split = name.split("_");
