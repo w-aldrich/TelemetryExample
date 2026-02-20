@@ -14,70 +14,81 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-//TODO: Add schema configs passed into class
 public class GenericDeserialization implements KafkaRecordDeserializationSchema<KafkaRecord> {
 
-    //TODO: Confirm cache exists here
-    private final KafkaAvroDeserializer keyDeserializer = new KafkaAvroDeserializer();
-    private final KafkaAvroDeserializer valueDeserializer = new KafkaAvroDeserializer();
-    private String topic;
+    private final String topic;
+    private final String schemaRegistryUrl;
 
-    public GenericDeserialization(String topic) {
+    private transient KafkaAvroDeserializer keyDeserializer;
+    private transient KafkaAvroDeserializer valueDeserializer;
+
+    public GenericDeserialization(String topic, String schemaRegistryUrl) {
+        this.topic             = topic;
+        this.schemaRegistryUrl = schemaRegistryUrl;
+    }
+
+    private void initDeserializersIfNeeded() {
+        if (keyDeserializer != null) {
+            return;
+        }
+
         Map<String, Object> config = Map.of(
-                "schema.registry.url", "http://localhost:8081",
+                "schema.registry.url", schemaRegistryUrl,
                 "specific.avro.reader", false
         );
+
+        keyDeserializer = new KafkaAvroDeserializer();
         keyDeserializer.configure(config, true);
+
+        valueDeserializer = new KafkaAvroDeserializer();
         valueDeserializer.configure(config, false);
-        this.topic = topic;
     }
 
     @Override
-    public TypeInformation<KafkaRecord> getProducedType() {
-        // Types.POJO(KafkaRecord.class);
-        return TypeInformation.of(KafkaRecord.class);
-    }
+    public void deserialize(ConsumerRecord<byte[], byte[]> record, Collector<KafkaRecord> collector)
+            throws IOException {
 
-    @Override
-    public void deserialize(ConsumerRecord<byte[], byte[]> record, Collector<KafkaRecord> collector) throws IOException {
-        GenericRecord key;
-        GenericRecord value;
-        Optional<DeserializationError> keyError = Optional.empty();
+        initDeserializersIfNeeded();
+
+        GenericRecord key   = null;
+        GenericRecord value = null;
+        Optional<DeserializationError> keyError   = Optional.empty();
         Optional<DeserializationError> valueError = Optional.empty();
 
-        int partition = record.partition();
-        long offset = record.offset();
+        int  partition = record.partition();
+        long offset    = record.offset();
 
         try {
             key = (GenericRecord) keyDeserializer.deserialize(topic, record.key());
         } catch (Exception e) {
-            key = null;
-            keyError = Optional.of(new DeserializationError(true));
-            keyError.get().setErrorInformation(e.getMessage());
-            PartitionOffset partitionOffset = new PartitionOffset(partition, offset);
-            keyError.get().setPartitionOffset(partitionOffset);
+            keyError = buildError(true, e.getMessage(), partition, offset);
         }
 
         try {
             value = (GenericRecord) valueDeserializer.deserialize(topic, record.value());
         } catch (Exception e) {
-            value = null;
-            valueError = Optional.of(new DeserializationError(true));
-            valueError.get().setErrorInformation(e.getMessage());
-            PartitionOffset partitionOffset = new PartitionOffset(partition, offset);
-            valueError.get().setPartitionOffset(partitionOffset);
+            valueError = buildError(false, e.getMessage(), partition, offset);
         }
 
         KafkaRecord kafkaRecord = new KafkaRecord(key, value);
-        if(keyError.isPresent()) {
-            kafkaRecord.setDeserializationError(true, keyError);
-        }
-        if(valueError.isPresent()) {
-            kafkaRecord.setDeserializationError(false, valueError);
-        }
-
+        keyError  .ifPresent(err -> kafkaRecord.setDeserializationError(true,  Optional.of(err)));
+        valueError.ifPresent(err -> kafkaRecord.setDeserializationError(false, Optional.of(err)));
         kafkaRecord.setPartitionOffset(partition, offset);
 
         collector.collect(kafkaRecord);
+    }
+
+    @Override
+    public TypeInformation<KafkaRecord> getProducedType() {
+        return TypeInformation.of(KafkaRecord.class);
+    }
+
+    private static Optional<DeserializationError> buildError(
+            boolean isKey, String message, int partition, long offset) {
+
+        DeserializationError error = new DeserializationError(isKey);
+        error.setErrorInformation(message);
+        error.setPartitionOffset(new PartitionOffset(partition, offset));
+        return Optional.of(error);
     }
 }

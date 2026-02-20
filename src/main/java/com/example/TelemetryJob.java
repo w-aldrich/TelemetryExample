@@ -31,9 +31,9 @@ import java.util.Properties;
 
 public class TelemetryJob {
 
-    private static final OutputTag<KafkaRecord> speedInfo = new OutputTag<>("speedInfo");
-    private static final OutputTag<KafkaRecord> vehicleInfo = new OutputTag<>("vehicleInfo");
-    private static final OutputTag<KafkaRecord> dlq = new OutputTag<>("dlq");
+    private static final OutputTag<KafkaRecord> speedInfo = new OutputTag<KafkaRecord>("speedInfo"){};
+    private static final OutputTag<KafkaRecord> vehicleInfo = new OutputTag<KafkaRecord>("vehicleInfo"){};
+    private static final OutputTag<KafkaRecord> dlq = new OutputTag<KafkaRecord>("dlq"){};
 
     private Properties getProperties(AppConfig appConfig) {
         Properties props = new Properties();
@@ -64,6 +64,8 @@ public class TelemetryJob {
         env.enableCheckpointing(appConfig.getCheckpointInterval(), CheckpointingMode.EXACTLY_ONCE);
         env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
         env.setParallelism(appConfig.getParallelism());
+        env.getConfig().registerKryoType(KafkaRecord.class);
+        env.getConfig().registerKryoType(org.apache.avro.generic.GenericData.Record.class);
 
         KafkaSource<KafkaRecord> source =
                 KafkaSource.<KafkaRecord>builder()
@@ -71,18 +73,20 @@ public class TelemetryJob {
                 .setTopics(appConfig.getInboundTopic())
                 .setGroupId(appConfig.getConsumerGroupId())
                 .setStartingOffsets(OffsetsInitializer.earliest())
-                .setDeserializer(new GenericDeserialization(appConfig.getInboundTopic()))
+                .setDeserializer(new GenericDeserialization(
+                        appConfig.getInboundTopic(),
+                        appConfig.getSchemaRegistryUrl()
+                ))
                 .build();
 
         KafkaSink<KafkaRecord> sink =
                 KafkaSink.<KafkaRecord>builder()
                         .setBootstrapServers(appConfig.getKafkaBootstrapServers())
-                        .setRecordSerializer(
-                            new GenericSerialization(
-                                    appConfig.getProcessedTopic(),
-                                    appConfig.getSchemaRegistryUrl()
-                            )
-                        ).build();
+                        .setRecordSerializer(new GenericSerialization(
+                            appConfig.getProcessedTopic(),
+                            appConfig.getSchemaRegistryUrl()
+                        ))
+                        .build();
 
         // TODO: Add watermarks
         SingleOutputStreamOperator<KafkaRecord> router =
