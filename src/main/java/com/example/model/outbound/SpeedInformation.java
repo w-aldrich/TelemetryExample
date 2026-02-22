@@ -5,6 +5,10 @@ import com.example.util.helpers.GenericRecordHelper;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+
 public class SpeedInformation implements Outbound {
 
     private static class ActualOutbound {
@@ -23,22 +27,22 @@ public class SpeedInformation implements Outbound {
         }
     }
 
-    Key key;
-    int sumX = 0;
-    int countX = 0;
-    int sumY = 0;
-    int countY = 0;
-    int sumZ = 0;
-    int countZ = 0;
-    int sumSpeed = 0;
-    int countSpeed = 0;
-    double startKm = 0;
-    double currentKm = 0;
-    Schema valueSchema;
+    private Key key;
+    private int sumX = 0;
+    private int countX = 0;
+    private int sumY = 0;
+    private int countY = 0;
+    private int sumZ = 0;
+    private int countZ = 0;
+    private int sumSpeed = 0;
+    private int countSpeed = 0;
+    private double startKm = 0;
+    private double currentKm = 0;
+    private final String valueSchemaString = new Schema.Parser().parse(new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/valueSpeedInformation.avsc").toPath())).toString()).toString();
 
-    public SpeedInformation(Schema keySchema, Schema valueSchema, String vehicleId, long date) {
-        key = new Key(vehicleId, date, keySchema);
-        this.valueSchema = valueSchema;
+    public SpeedInformation(String vehicleId, long date) throws IOException {
+        System.out.println("[SpeedInformation] SpeedInformation constructor");
+        key = new Key(vehicleId, date);
     }
 
     public void setSpeed(double speed) {
@@ -64,31 +68,32 @@ public class SpeedInformation implements Outbound {
     }
 
     private double getXAvg() {
-        return countX == 0 ? 0 : (double) sumX/countX;
+        return countX <= 1 ? sumX : (double) sumX/countX;
     }
     private double getYAvg() {
-        return countY == 0 ? 0 : (double) sumY/countY;
+        return countY <= 1 ? sumY : (double) sumY/countY;
     }
     private double getZAvg() {
-        return countZ == 0 ? 0 : (double) sumZ/countZ;
+        return countZ <= 1 ? sumZ : (double) sumZ/countZ;
     }
 
     private double getSpeedAvg() {
-        return countSpeed == 0 ? 0 : (double) sumSpeed/countSpeed;
+        return countSpeed <= 1 ? sumSpeed : (double) sumSpeed/countSpeed;
     }
 
     private double getTotalDriven() {
-        return currentKm == 0 ? 0 : currentKm - startKm;
+        return currentKm <= 1 ? 0 : currentKm - startKm;
     }
 
 
     @Override
     public KafkaRecord toKafkaRecord() {
+        System.out.println("[SpeedInformation] toKafkaRecord");
         GenericRecord keyRecord = key.toGenericRecord();
         ActualOutbound a = new ActualOutbound(getXAvg(), getYAvg(), getZAvg(), getSpeedAvg(), getTotalDriven());
-        GenericRecord valueRecord = GenericRecordHelper.fromObjectToGenericRecord(a, valueSchema);
+        GenericRecord valueRecord = GenericRecordHelper.fromObjectToGenericRecord(a, new Schema.Parser().parse(valueSchemaString));
 
-        return new KafkaRecord(keyRecord, valueRecord);
+        return new KafkaRecord(keyRecord, valueRecord, false);
     }
 
 }

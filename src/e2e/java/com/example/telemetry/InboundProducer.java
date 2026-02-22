@@ -14,6 +14,7 @@ import org.apache.kafka.clients.producer.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Properties;
 
 public class InboundProducer {
@@ -39,8 +40,12 @@ public class InboundProducer {
         producer = new KafkaProducer<>(props);
     }
 
-    private GenericRecord keyRecord(Schema keySchema) {
-        return GenericRecordHelper.fromObjectToGenericRecord(new Key(), keySchema);
+    private GenericRecord keyRecord(Schema keySchema, Optional<Key> optionalKey) {
+        if(optionalKey.isPresent()) {
+            return GenericRecordHelper.fromObjectToGenericRecord(optionalKey.get(), keySchema);
+        } else {
+            return GenericRecordHelper.fromObjectToGenericRecord(new Key(), keySchema);
+        }
     }
 
     private Schema getTypeSchema(TelemetryType t) {
@@ -63,7 +68,7 @@ public class InboundProducer {
 
         record.put("eventId", RandomGenerator.generateString(10));
         record.put("eventTimestamp", System.currentTimeMillis());
-        record.put("telemetryType", t.name());
+        record.put("TelemetryType", t.name());
 
         switch (t) {
             case SPEED -> event = new Speed();
@@ -93,19 +98,19 @@ public class InboundProducer {
         record.put("payload", internalRecord);
 
         //Convert Enum
-        Schema enumSchema = valueSchema.getField("telemetryType").schema();
+        Schema enumSchema = valueSchema.getField("TelemetryType").schema();
         GenericData.EnumSymbol symbol = new GenericData.EnumSymbol(enumSchema, t);
-        record.put("telemetryType", symbol);
+        record.put("TelemetryType", symbol);
 
         System.out.println(record);
 
         return record;
     }
 
-    public void sendInboundEvent(TelemetryType t) throws Exception {
+    public void sendInboundEvent(TelemetryType t, Optional<Key> optionalKey) throws Exception {
 
         System.out.println("Starting to send Type: " + t.name());
-        GenericRecord key = keyRecord(keySchema);
+        GenericRecord key = keyRecord(keySchema, optionalKey);
 
         GenericRecord value = valueRecord(t);
 

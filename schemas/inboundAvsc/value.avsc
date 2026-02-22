@@ -19,7 +19,7 @@
       }
     },
     {
-      "name": "telemetryType",
+      "name": "TelemetryType",
       "type": {
         "name": "TelemetryInternal",
         "type": "enum",

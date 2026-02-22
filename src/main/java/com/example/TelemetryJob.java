@@ -2,28 +2,29 @@ package com.example;
 
 import com.example.config.AppConfig;
 import com.example.flink.ProcessSpeed;
-import com.example.flink.ProcessVehicle;
 import com.example.model.KafkaRecord;
 import com.example.model.outbound.SpeedInformation;
 import com.example.model.telemetryEnums.TelemetryType;
 import com.example.util.deserialization.GenericDeserialization;
 import com.example.util.serialization.GenericSerialization;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.formats.avro.utils.AvroKryoSerializerUtils;
 import org.apache.flink.streaming.api.CheckpointingMode;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.datastream.*;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.OutputTag;
-import org.checkerframework.checker.units.qual.K;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -35,37 +36,24 @@ public class TelemetryJob {
     private static final OutputTag<KafkaRecord> vehicleInfo = new OutputTag<KafkaRecord>("vehicleInfo"){};
     private static final OutputTag<KafkaRecord> dlq = new OutputTag<KafkaRecord>("dlq"){};
 
-    private Properties getProperties(AppConfig appConfig) {
-        Properties props = new Properties();
-        props.put("bootstrap.servers", appConfig.getKafkaBootstrapServers());
-        props.put("schema.registry.url", appConfig.getSchemaRegistryUrl());
-        props.put("group.id", appConfig.getConsumerGroupId());
-        return props;
-    }
-
-    private static String getKey(KafkaRecord record) {
-        return record.getKey()
-                .get("vehicleId") + "_" +
-                Instant.ofEpochMilli(
-                                (long) record.getValue().get("eventTimestamp")
-                        )
-                        .atZone(ZoneId.of("UTC"))
-                        .toLocalDate()
-                        .toString();
-    }
-
     public static void main(String[] args) throws Exception {
+        run(StreamExecutionEnvironment.getExecutionEnvironment());
+    }
+
+    public static void run(StreamExecutionEnvironment env) throws Exception {
+
+        System.out.println("**** Starting Flink Application ****");
 
         AppConfig appConfig = new AppConfig();
 
-        StreamExecutionEnvironment env =
-                StreamExecutionEnvironment.getExecutionEnvironment();
-
         env.enableCheckpointing(appConfig.getCheckpointInterval(), CheckpointingMode.EXACTLY_ONCE);
-        env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
-        env.setParallelism(appConfig.getParallelism());
-        env.getConfig().registerKryoType(KafkaRecord.class);
-        env.getConfig().registerKryoType(org.apache.avro.generic.GenericData.Record.class);
+//        env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
+        env.setParallelism(1);
+        env.setRestartStrategy(
+                org.apache.flink.api.common.restartstrategy.RestartStrategies.noRestart()
+        );
+        AvroKryoSerializerUtils avroKryoSerializerUtils = new AvroKryoSerializerUtils();
+        avroKryoSerializerUtils.addAvroSerializersIfRequired(env.getConfig(), GenericData.Record.class);
 
         KafkaSource<KafkaRecord> source =
                 KafkaSource.<KafkaRecord>builder()
@@ -83,7 +71,7 @@ public class TelemetryJob {
                 KafkaSink.<KafkaRecord>builder()
                         .setBootstrapServers(appConfig.getKafkaBootstrapServers())
                         .setRecordSerializer(new GenericSerialization(
-                            appConfig.getProcessedTopic(),
+                            appConfig.getOutboundSpeedTopic(),
                             appConfig.getSchemaRegistryUrl()
                         ))
                         .build();
@@ -103,11 +91,9 @@ public class TelemetryJob {
 
 
         router.getSideOutput(speedInfo)
-            .keyBy(TelemetryJob::getKey)
+            .keyBy(KafkaRecord::getRoutingKey)
             .process(new ProcessSpeed())
-            .map(SpeedInformation::toKafkaRecord)
             .sinkTo(sink);
-
 
 
         env.execute("Vehicle Telemetry Processing Job");

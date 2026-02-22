@@ -70,7 +70,7 @@ public class GenericDeserialization implements KafkaRecordDeserializationSchema<
             valueError = buildError(false, e.getMessage(), partition, offset);
         }
 
-        KafkaRecord kafkaRecord = new KafkaRecord(key, value);
+        KafkaRecord kafkaRecord = new KafkaRecord(key, value, true);
         keyError  .ifPresent(err -> kafkaRecord.setDeserializationError(true,  Optional.of(err)));
         valueError.ifPresent(err -> kafkaRecord.setDeserializationError(false, Optional.of(err)));
         kafkaRecord.setPartitionOffset(partition, offset);

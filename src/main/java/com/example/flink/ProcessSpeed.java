@@ -10,50 +10,52 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 
-public class ProcessSpeed extends KeyedProcessFunction<String, KafkaRecord, SpeedInformation> {
+public class ProcessSpeed extends KeyedProcessFunction<String, KafkaRecord, KafkaRecord> {
 
     private transient ValueState<SpeedInformation> state;
 
     @Override
     public void open(Configuration parameters) {
+        System.out.println("[PROCESS_SPEED] open() called");
+        try {
+            ValueStateDescriptor<SpeedInformation> aggDesc =
+                    new ValueStateDescriptor<SpeedInformation>("telemetry-agg", SpeedInformation.class);
 
-        ValueStateDescriptor<SpeedInformation> aggDesc =
-            new ValueStateDescriptor<SpeedInformation>("telemetry-agg", SpeedInformation.class);
-
-        state = getRuntimeContext().getState(aggDesc);
+            state = getRuntimeContext().getState(aggDesc);
+        } catch (Exception e) {
+            System.out.printf("[PROCESS_SPEED] ERROR %s", e.getMessage());
+        }
     }
 
     @Override
     public void processElement(
             KafkaRecord kafkaRecord,
-            KeyedProcessFunction<String, KafkaRecord, SpeedInformation>.Context context,
-            Collector<SpeedInformation> collector) throws Exception {
+            KeyedProcessFunction<String, KafkaRecord, KafkaRecord>.Context context,
+            Collector<KafkaRecord> collector) throws Exception {
 
         SpeedInformation inState = state.value();
 
-        if(inState == null) {
-            inState =
-                new SpeedInformation(
-                    kafkaRecord.getKey().getSchema(),
-                    kafkaRecord.getValue().getSchema(),
-                    (String) kafkaRecord.getKey().get("vehicleId"),
+        if (inState == null) {
+            inState = new SpeedInformation(
+                    (String) kafkaRecord.getKey().get("vehicleId").toString(),
                     (long) kafkaRecord.getValue().get("eventTimestamp"));
         }
 
-        TelemetryType t = TelemetryType.valueOf((String)kafkaRecord.getValue().get("TelemetryType"));
+        TelemetryType t = TelemetryType.valueOf((String)kafkaRecord.getValue().get("TelemetryType").toString());
         GenericRecord payload = (GenericRecord) kafkaRecord.getValue().get("payload");
-        GenericRecord internal = (GenericRecord) payload.get(t.typeToTelemetryName());
 
         switch (t) {
-            case SPEED -> inState.setSpeed((double) internal.get("speedKph"));
+            case SPEED -> inState.setSpeed((double) payload.get("speedKph"));
             case ACCELERATION -> {
-                double x = (double) internal.get("xAxis");
-                double y = (double) internal.get("yAxis");
-                double z = (double) internal.get("zAxis");
+                double x = (double) payload.get("xAxis");
+                double y = (double) payload.get("yAxis");
+                double z = (double) payload.get("zAxis");
                 inState.setAcc(x, y, z);
             }
-            case ODOMETER -> inState.setKmDriven((double)internal.get("totalKilometers"));
+            case ODOMETER -> inState.setKmDriven((double) payload.get("totalKilometers"));
         }
-    }
 
+        state.update(inState);
+        collector.collect(inState.toKafkaRecord());
+    }
 }

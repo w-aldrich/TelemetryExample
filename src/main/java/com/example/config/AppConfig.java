@@ -36,8 +36,8 @@ public class AppConfig {
         return properties.getProperty("telemetry.inbound.topic");
     }
 
-    public String getProcessedTopic() {
-        return properties.getProperty("telemetry.processed.topic");
+    public String getOutboundSpeedTopic() {
+        return properties.getProperty("telemetry.outbound.speed.topic");
     }
 
     public String getConsumerGroupId() {
