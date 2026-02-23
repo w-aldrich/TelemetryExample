@@ -78,9 +78,6 @@ public class TelemetryE2ETest {
                 inboundValueAvroPath
         );
 
-//        for (TelemetryType t : TelemetryType.values()) {
-//            inboundProducer.sendInboundEvent(t);
-//        }
         Key sameKey = new Key();
         inboundProducer.sendInboundEvent(TelemetryType.SPEED, Optional.of(sameKey));
         inboundProducer.sendInboundEvent(TelemetryType.ACCELERATION, Optional.of(sameKey));
@@ -96,6 +93,7 @@ public class TelemetryE2ETest {
     // Helpers
     // -------------------------------------------------------------------------
 
+    // TODO: move to infraSetup
     private void createMiniCluster() throws Exception {
         System.out.println("[E2E] Starting MiniCluster...");
 
@@ -137,6 +135,7 @@ public class TelemetryE2ETest {
         System.out.println("[E2E] Waiting for job RUNNING status...");
     }
 
+    // TODO: move to infraSetup
     private void waitForJobStartup() {
         Awaitility.await()
                 .atMost(60, TimeUnit.SECONDS)
@@ -207,6 +206,7 @@ public class TelemetryE2ETest {
         }
     }
 
+    // TODO: move to infra setup
     private boolean isCancellation(Exception e) {
         Throwable cause = e;
         while (cause != null) {
