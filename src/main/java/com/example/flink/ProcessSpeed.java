@@ -16,7 +16,6 @@ public class ProcessSpeed extends KeyedProcessFunction<String, KafkaRecord, Kafk
 
     @Override
     public void open(Configuration parameters) {
-        System.out.println("[PROCESS_SPEED] open() called");
         try {
             ValueStateDescriptor<SpeedInformation> aggDesc =
                     new ValueStateDescriptor<SpeedInformation>("telemetry-agg", SpeedInformation.class);

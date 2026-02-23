@@ -2,7 +2,7 @@ package com.example;
 
 import com.example.model.KafkaRecord;
 import com.example.model.outbound.SpeedInformation;
-import com.example.telemetry.RandomGenerator;
+import com.example.telemetry.utils.RandomGenerator;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.Test;
 

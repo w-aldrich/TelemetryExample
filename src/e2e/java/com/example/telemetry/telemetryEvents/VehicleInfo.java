@@ -1,6 +1,6 @@
 package com.example.telemetry.telemetryEvents;
 
-import com.example.telemetry.RandomGenerator;
+import com.example.telemetry.utils.RandomGenerator;
 
 public class VehicleInfo {
     private final String make = RandomGenerator.generateString(10);

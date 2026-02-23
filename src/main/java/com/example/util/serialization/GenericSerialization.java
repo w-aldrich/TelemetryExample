@@ -44,7 +44,6 @@ public class GenericSerialization implements KafkaRecordSerializationSchema<Kafk
 
     @Override
     public ProducerRecord<byte[], byte[]> serialize(KafkaRecord kafkaRecord, KafkaSinkContext kafkaSinkContext, Long aLong) {
-        System.out.println(kafkaRecord);
         try {
 
             GenericRecord keyRecord = kafkaRecord.getKey();

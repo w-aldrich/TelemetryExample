@@ -41,7 +41,6 @@ public class SpeedInformation implements Outbound {
     private final String valueSchemaString = new Schema.Parser().parse(new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/valueSpeedInformation.avsc").toPath())).toString()).toString();
 
     public SpeedInformation(String vehicleId, long date) throws IOException {
-        System.out.println("[SpeedInformation] SpeedInformation constructor");
         outboundKey = new OutboundKey(vehicleId, date);
     }
 
@@ -88,7 +87,6 @@ public class SpeedInformation implements Outbound {
 
     @Override
     public KafkaRecord toKafkaRecord() {
-        System.out.println("[SpeedInformation] toKafkaRecord");
         GenericRecord keyRecord = outboundKey.toGenericRecord();
         ActualOutbound a = new ActualOutbound(getXAvg(), getYAvg(), getZAvg(), getSpeedAvg(), getTotalDriven());
         GenericRecord valueRecord = GenericRecordHelper.fromObjectToGenericRecord(a, new Schema.Parser().parse(valueSchemaString));

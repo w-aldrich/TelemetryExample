@@ -1,10 +1,12 @@
-package com.example.telemetry;
+package com.example.telemetry.utils;
 
+import com.example.model.KafkaRecord;
 import com.example.model.telemetryEnums.TelemetryType;
 import com.example.telemetry.telemetryEvents.BaseEvent;
 import com.example.telemetry.telemetryEvents.Key;
 import com.example.telemetry.telemetryEvents.nonVehicle.*;
 import com.example.telemetry.telemetryEvents.vehicle.*;
+import com.example.telemetry.utils.RandomGenerator;
 import com.example.util.helpers.GenericRecordHelper;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.generic.GenericData;
@@ -102,20 +104,17 @@ public class InboundProducer {
         GenericData.EnumSymbol symbol = new GenericData.EnumSymbol(enumSchema, t);
         record.put("TelemetryType", symbol);
 
-        System.out.println(record);
-
         return record;
     }
 
-    public void sendInboundEvent(TelemetryType t, Optional<Key> optionalKey) throws Exception {
+    public KafkaRecord sendInboundEvent(TelemetryType t, Optional<Key> optionalKey) throws Exception {
 
-        System.out.println("Starting to send Type: " + t.name());
         GenericRecord key = keyRecord(keySchema, optionalKey);
-
         GenericRecord value = valueRecord(t);
 
         producer.send(new ProducerRecord<>(topic, key, value)).get();
-        System.out.println("Completed sending Type: " + t.name());
+        System.out.println("[InboundProducer] Completed sending Type: " + t.name());
+        return new KafkaRecord(key, value, true);
     }
 
     public void closeProducer() {

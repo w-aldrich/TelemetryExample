@@ -1,4 +1,4 @@
-package com.example.telemetry;
+package com.example.telemetry.utils;
 
 import com.example.model.telemetryEnums.Status;
 import com.example.model.telemetryEnums.TelemetryType;
