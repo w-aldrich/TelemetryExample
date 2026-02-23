@@ -27,7 +27,7 @@ public class SpeedInformation implements Outbound {
         }
     }
 
-    private Key key;
+    private OutboundKey outboundKey;
     private int sumX = 0;
     private int countX = 0;
     private int sumY = 0;
@@ -42,7 +42,7 @@ public class SpeedInformation implements Outbound {
 
     public SpeedInformation(String vehicleId, long date) throws IOException {
         System.out.println("[SpeedInformation] SpeedInformation constructor");
-        key = new Key(vehicleId, date);
+        outboundKey = new OutboundKey(vehicleId, date);
     }
 
     public void setSpeed(double speed) {
@@ -89,7 +89,7 @@ public class SpeedInformation implements Outbound {
     @Override
     public KafkaRecord toKafkaRecord() {
         System.out.println("[SpeedInformation] toKafkaRecord");
-        GenericRecord keyRecord = key.toGenericRecord();
+        GenericRecord keyRecord = outboundKey.toGenericRecord();
         ActualOutbound a = new ActualOutbound(getXAvg(), getYAvg(), getZAvg(), getSpeedAvg(), getTotalDriven());
         GenericRecord valueRecord = GenericRecordHelper.fromObjectToGenericRecord(a, new Schema.Parser().parse(valueSchemaString));
 
