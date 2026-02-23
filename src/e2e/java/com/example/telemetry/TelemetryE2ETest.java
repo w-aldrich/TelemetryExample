@@ -11,7 +11,6 @@ import com.example.telemetry.utils.InboundProducer;
 import com.example.telemetry.utils.OutboundConsumer;
 import com.example.telemetry.utils.RandomGenerator;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,10 +27,10 @@ public class TelemetryE2ETest {
     private static final String REGISTRY = APP_CONFIG.getSchemaRegistryUrl();
     private static final String INBOUND_TOPIC = APP_CONFIG.getInboundTopic();
     private static final String OUTBOUND_SPEED_TOPIC = APP_CONFIG.getOutboundSpeedTopic();
-    private static final String inboundKeyAvroPath = "schemas/inboundAvsc/key.avsc";
-    private static final String inboundValueAvroPath = "schemas/inboundAvsc/value.avsc";
-    private static final String outboundKeyAvroPath = "schemas/outboundAvsc/key.avsc";
-    private static final String outboundValueAvroPath = "schemas/outboundAvsc/valueSpeedInformation.avsc";
+    private static final String INBOUND_AVSC_KEY = "schemas/inboundAvsc/key.avsc";
+    private static final String INBOUND_AVSC_VALUE = "schemas/inboundAvsc/value.avsc";
+    private static final String OUTBOUND_AVSC_KEY = "schemas/outboundAvsc/key.avsc";
+    private static final String OUTBOUND_AVSC_VALUE_SPEED_INFORMATION = "schemas/outboundAvsc/valueSpeedInformation.avsc";
     private MiniCluster miniCluster;
 
     private void createTopicAndSchemas() {
@@ -42,16 +41,17 @@ public class TelemetryE2ETest {
             System.out.println("[E2E] Topic create (may already exist): " + e.getMessage());
         }
         try {
-            SchemaRegistryHelper.registerSchema(REGISTRY, INBOUND_TOPIC + "-key",   inboundKeyAvroPath);
-            SchemaRegistryHelper.registerSchema(REGISTRY, INBOUND_TOPIC + "-value", inboundValueAvroPath);
-            SchemaRegistryHelper.registerSchema(REGISTRY, OUTBOUND_SPEED_TOPIC + "-key",   outboundKeyAvroPath);   // ← add
-            SchemaRegistryHelper.registerSchema(REGISTRY, OUTBOUND_SPEED_TOPIC + "-value", outboundValueAvroPath); // ← add
+            SchemaRegistryHelper.registerSchema(REGISTRY, INBOUND_TOPIC + "-key", INBOUND_AVSC_KEY);
+            SchemaRegistryHelper.registerSchema(REGISTRY, INBOUND_TOPIC + "-value", INBOUND_AVSC_VALUE);
+            SchemaRegistryHelper.registerSchema(REGISTRY, OUTBOUND_SPEED_TOPIC + "-key", OUTBOUND_AVSC_KEY);
+            SchemaRegistryHelper.registerSchema(REGISTRY, OUTBOUND_SPEED_TOPIC + "-value", OUTBOUND_AVSC_VALUE_SPEED_INFORMATION);
 
         } catch (Exception e) {
             System.out.println("[E2E] Schema register (may already exist): " + e.getMessage());
         }
     }
 
+    // !!! Must start docker-compose file first !!!
     @BeforeAll
     public void setup() throws Exception {
         createTopicAndSchemas();
@@ -105,22 +105,27 @@ public class TelemetryE2ETest {
     }
 
     // expected 3 outbound records
+    // test speed, acc, odometer events work as expected without additional logic
     @Test
     public void testAllSpeedEvents() throws Exception {
         InboundProducer inboundProducer = new InboundProducer(
                 BOOTSTRAP,
                 REGISTRY,
                 INBOUND_TOPIC,
-                inboundKeyAvroPath,
-                inboundValueAvroPath
+                INBOUND_AVSC_KEY,
+                INBOUND_AVSC_VALUE
         );
 
         Key sameKey = new Key();
         KafkaRecord inboundSpeed = inboundProducer.sendInboundEvent(TelemetryType.SPEED, Optional.of(sameKey));
         KafkaRecord inboundAcc = inboundProducer.sendInboundEvent(TelemetryType.ACCELERATION, Optional.of(sameKey));
-        KafkaRecord inboundKM = inboundProducer.sendInboundEvent(TelemetryType.ODOMETER, Optional.of(sameKey));
+
+        // Ignore as we aren't testing this
+        inboundProducer.sendInboundEvent(TelemetryType.ODOMETER, Optional.of(sameKey));
 
         inboundProducer.closeProducer();
+
+        // Wait 1 second to ensure everything is processed as expected
         Thread.sleep(1000);
 
         OutboundConsumer consumer = new OutboundConsumer(BOOTSTRAP, REGISTRY, OUTBOUND_SPEED_TOPIC, RandomGenerator.generateString(3));
@@ -130,14 +135,13 @@ public class TelemetryE2ETest {
 
         consumer.close();
 
-        GenericRecord expectedSpeedRecord = ret.get(0).getValue();
-        GenericRecord expectedAccRecord = ret.get(1).getValue();
+        // Using the same key, the last record should contain everything we are looking for
         GenericRecord expectedKmRecord = ret.get(2).getValue();
 
-        assert( getInboundSpeed(inboundSpeed.getValue()) == (double) expectedSpeedRecord.get("averageSpeed"));
-        assert( getInboundX(inboundAcc.getValue()) == (double) expectedAccRecord.get("averageXAcceleration") );
-        assert( getInboundY(inboundAcc.getValue()) == (double) expectedAccRecord.get("averageYAcceleration") );
-        assert( getInboundZ(inboundAcc.getValue()) == (double) expectedAccRecord.get("averageZAcceleration") );
+        assert( getInboundSpeed(inboundSpeed.getValue()) == (double) expectedKmRecord.get("averageSpeed"));
+        assert( getInboundX(inboundAcc.getValue()) == (double) expectedKmRecord.get("averageXAcceleration") );
+        assert( getInboundY(inboundAcc.getValue()) == (double) expectedKmRecord.get("averageYAcceleration") );
+        assert( getInboundZ(inboundAcc.getValue()) == (double) expectedKmRecord.get("averageZAcceleration") );
         // Starting point nothing should be here
         assert( 0 == (double) expectedKmRecord.get("totalKmDriven"));
     }

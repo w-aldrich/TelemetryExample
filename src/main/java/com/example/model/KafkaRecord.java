@@ -30,7 +30,6 @@ public class KafkaRecord implements Serializable {
         }
     }
 
-    public void setRoutingKey(String routingKey) { this.routingKey = routingKey; }
     private void computeRoutingKey() {
         this.routingKey = key
                 .get("vehicleId") + "_" +
@@ -62,16 +61,13 @@ public class KafkaRecord implements Serializable {
         return value;
     }
 
-    public void setPartition(int partition) {
-        this.partition = partition;
-    }
-    public void setOffset(long offset) {
-        this.offset = offset;
-    }
-
     public void setPartitionOffset(int partition, long offset) {
        this.partition = partition;
        this.offset = offset;
+    }
+
+    public PartitionOffset getPartitionOffset() {
+        return new PartitionOffset(partition, offset);
     }
 
     public void setDeserializationError(boolean iskey, Optional<DeserializationError> error) {
@@ -80,14 +76,6 @@ public class KafkaRecord implements Serializable {
         } else {
             valueDeserializationError = error;
         }
-    }
-
-    public int getPartition() {
-        return partition;
-    }
-
-    public long getOffset() {
-        return offset;
     }
 
     public boolean hasDeserializationError() {

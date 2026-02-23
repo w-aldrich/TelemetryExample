@@ -3,37 +3,26 @@ package com.example;
 import com.example.config.AppConfig;
 import com.example.flink.ProcessSpeed;
 import com.example.model.KafkaRecord;
-import com.example.model.outbound.SpeedInformation;
 import com.example.model.telemetryEnums.TelemetryType;
 import com.example.util.deserialization.GenericDeserialization;
 import com.example.util.serialization.GenericSerialization;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
-import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
 import org.apache.flink.formats.avro.utils.AvroKryoSerializerUtils;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.*;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
-import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.OutputTag;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.Properties;
 
 public class TelemetryJob {
 
     private static final OutputTag<KafkaRecord> speedInfo = new OutputTag<KafkaRecord>("speedInfo"){};
-    private static final OutputTag<KafkaRecord> vehicleInfo = new OutputTag<KafkaRecord>("vehicleInfo"){};
     private static final OutputTag<KafkaRecord> dlq = new OutputTag<KafkaRecord>("dlq"){};
 
     public static void main(String[] args) throws Exception {
@@ -47,44 +36,58 @@ public class TelemetryJob {
         AppConfig appConfig = new AppConfig();
 
         env.enableCheckpointing(appConfig.getCheckpointInterval(), CheckpointingMode.EXACTLY_ONCE);
+        // TODO: Add backend
 //        env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
         env.setParallelism(1);
         env.setRestartStrategy(
                 org.apache.flink.api.common.restartstrategy.RestartStrategies.noRestart()
         );
+
+        // Needed for GenericRecord deserialization
         AvroKryoSerializerUtils avroKryoSerializerUtils = new AvroKryoSerializerUtils();
         avroKryoSerializerUtils.addAvroSerializersIfRequired(env.getConfig(), GenericData.Record.class);
 
+        String bootstrapServers = appConfig.getKafkaBootstrapServers();
+        String schemaRegUrl = appConfig.getSchemaRegistryUrl();
+        String inboundTopic = appConfig.getInboundTopic();
+
         KafkaSource<KafkaRecord> source =
                 KafkaSource.<KafkaRecord>builder()
-                .setBootstrapServers(appConfig.getKafkaBootstrapServers())
-                .setTopics(appConfig.getInboundTopic())
+                .setBootstrapServers(bootstrapServers)
+                .setTopics(inboundTopic)
                 .setGroupId(appConfig.getConsumerGroupId())
                 .setStartingOffsets(OffsetsInitializer.earliest())
                 .setDeserializer(new GenericDeserialization(
-                        appConfig.getInboundTopic(),
-                        appConfig.getSchemaRegistryUrl()
+                        inboundTopic,
+                        schemaRegUrl
                 ))
                 .build();
 
-        KafkaSink<KafkaRecord> sink =
+        KafkaSink<KafkaRecord> speedSink =
                 KafkaSink.<KafkaRecord>builder()
-                        .setBootstrapServers(appConfig.getKafkaBootstrapServers())
+                        .setBootstrapServers(bootstrapServers)
                         .setRecordSerializer(new GenericSerialization(
                             appConfig.getOutboundSpeedTopic(),
-                            appConfig.getSchemaRegistryUrl()
+                            schemaRegUrl
                         ))
                         .build();
 
         // TODO: Add watermarks
         SingleOutputStreamOperator<KafkaRecord> router =
-            env.fromSource(source, WatermarkStrategy.noWatermarks(), appConfig.getInboundTopic())
+            env.fromSource(source, WatermarkStrategy.noWatermarks(), inboundTopic)
                 .process(new ProcessFunction<KafkaRecord, KafkaRecord>() {
                     @Override
                     public void processElement(KafkaRecord kafkaRecord, ProcessFunction<KafkaRecord, KafkaRecord>.Context context, Collector<KafkaRecord> collector) throws Exception {
-                        TelemetryType t = TelemetryType.fromGRToType(kafkaRecord.getValue());
-                        switch (t) {
-                            case SPEED, ACCELERATION, ODOMETER -> context.output(speedInfo, kafkaRecord);
+                        if(kafkaRecord.hasDeserializationError()) {
+                            context.output(dlq, kafkaRecord);
+                        } else if (kafkaRecord.isTombstoneRecord()) {
+                            //TODO implement tombstone, sending to DLQ for now
+                            context.output(dlq, kafkaRecord);
+                        } else {
+                            TelemetryType t = TelemetryType.fromGRToType(kafkaRecord.getValue());
+                            switch (t) {
+                                case SPEED, ACCELERATION, ODOMETER -> context.output(speedInfo, kafkaRecord);
+                            }
                         }
                     }
                 });
@@ -93,8 +96,10 @@ public class TelemetryJob {
         router.getSideOutput(speedInfo)
             .keyBy(KafkaRecord::getRoutingKey)
             .process(new ProcessSpeed())
-            .sinkTo(sink);
+            .sinkTo(speedSink);
 
+        // TODO: implement DLQ
+        // router.getSideOutput(dlq);
 
         env.execute("Vehicle Telemetry Processing Job");
     }
