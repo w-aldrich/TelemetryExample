@@ -23,3 +23,5 @@ docker compose up -d
 ```
 
 ### 2. Run the TelemetryE2ETest file
+
+### 3. You can see the values returned in Control Center at http://localhost:9021/clusters
