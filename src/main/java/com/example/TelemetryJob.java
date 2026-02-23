@@ -39,6 +39,8 @@ public class TelemetryJob {
         // TODO: Add backend
 //        env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
         env.setParallelism(1);
+
+        // TODO: Remove once application is ready
         env.setRestartStrategy(
                 org.apache.flink.api.common.restartstrategy.RestartStrategies.noRestart()
         );
