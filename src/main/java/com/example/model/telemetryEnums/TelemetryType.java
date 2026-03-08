@@ -22,6 +22,8 @@ public enum TelemetryType {
     public static TelemetryType fromGRToType(GenericRecord gr) {
         return TelemetryType.valueOf(gr.get("TelemetryType").toString());
     }
+
+    // Cap first letter, rest is lowercase + "Telemetry"
     public String typeToTelemetryName() {
         String name = this.name();
         String[] split = name.split("_");

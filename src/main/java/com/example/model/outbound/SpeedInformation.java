@@ -11,23 +11,9 @@ import java.nio.file.Files;
 
 public class SpeedInformation implements Outbound {
 
-    private static class ActualOutbound {
-        double averageXAcceleration;
-        double averageYAcceleration;
-        double averageZAcceleration;
-        double averageSpeed;
-        double totalKmDriven;
+    //TODO: Override toString for debugging purposes
 
-        private ActualOutbound(double x, double y, double z, double s, double t) {
-            averageXAcceleration = x;
-            averageYAcceleration = y;
-            averageZAcceleration = z;
-            averageSpeed = s;
-            totalKmDriven = t;
-        }
-    }
-
-    private OutboundKey outboundKey;
+    private OutboundKeyVIDDate outboundKeyVIDDate;
     private int sumX = 0;
     private int countX = 0;
     private int sumY = 0;
@@ -41,7 +27,7 @@ public class SpeedInformation implements Outbound {
     private final String valueSchemaString = new Schema.Parser().parse(new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/valueSpeedInformation.avsc").toPath())).toString()).toString();
 
     public SpeedInformation(String vehicleId, long date) throws IOException {
-        outboundKey = new OutboundKey(vehicleId, date);
+        outboundKeyVIDDate = new OutboundKeyVIDDate(vehicleId, date);
     }
 
     public void setSpeed(double speed) {
@@ -87,8 +73,8 @@ public class SpeedInformation implements Outbound {
 
     @Override
     public KafkaRecord toKafkaRecord() {
-        GenericRecord keyRecord = outboundKey.toGenericRecord();
-        ActualOutbound a = new ActualOutbound(getXAvg(), getYAvg(), getZAvg(), getSpeedAvg(), getTotalDriven());
+        GenericRecord keyRecord = outboundKeyVIDDate.toGenericRecord();
+        SpeedInformationOutbound a = new SpeedInformationOutbound(getXAvg(), getYAvg(), getZAvg(), getSpeedAvg(), getTotalDriven());
         GenericRecord valueRecord = GenericRecordHelper.fromObjectToGenericRecord(a, new Schema.Parser().parse(valueSchemaString));
 
         return new KafkaRecord(keyRecord, valueRecord, false);

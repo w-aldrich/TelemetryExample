@@ -8,13 +8,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public class OutboundKey {
+public class OutboundKeyVIDDate {
 
     String keySchema = new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/key.avsc").toPath())).toString();
     String vehicleId;
     long date;
 
-    public OutboundKey(String vehicleId, long date) throws IOException {
+    public OutboundKeyVIDDate(String vehicleId, long date) throws IOException {
         this.keySchema = keySchema.toString();
         this.vehicleId = vehicleId;
         this.date = date;

@@ -4,8 +4,10 @@ import com.example.model.KafkaRecord;
 import com.example.model.outbound.SpeedInformation;
 import com.example.model.telemetryEnums.TelemetryType;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
@@ -17,8 +19,17 @@ public class ProcessSpeed extends KeyedProcessFunction<String, KafkaRecord, Kafk
     @Override
     public void open(Configuration parameters) {
         try {
+            StateTtlConfig ttlConfig = StateTtlConfig
+                    .newBuilder(Time.hours(24))
+                    .setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite)
+                    .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
+                    .cleanupFullSnapshot()
+                    .build();
+
             ValueStateDescriptor<SpeedInformation> aggDesc =
                     new ValueStateDescriptor<SpeedInformation>("telemetry-agg", SpeedInformation.class);
+
+            aggDesc.enableTimeToLive(ttlConfig);
 
             state = getRuntimeContext().getState(aggDesc);
         } catch (Exception e) {

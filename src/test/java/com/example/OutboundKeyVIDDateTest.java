@@ -1,6 +1,6 @@
 package com.example;
 
-import com.example.model.outbound.OutboundKey;
+import com.example.model.outbound.OutboundKeyVIDDate;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.Test;
 
@@ -8,13 +8,13 @@ import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class OutboundKeyTest {
+public class OutboundKeyVIDDateTest {
 
     @Test
     public void testConstructor() {
-        OutboundKey key;
+        OutboundKeyVIDDate key;
         try {
-            key = new OutboundKey("1", 1L);
+            key = new OutboundKeyVIDDate("1", 1L);
         } catch (IOException e) {
             assert(false);
         }
@@ -23,11 +23,11 @@ public class OutboundKeyTest {
 
     @Test
     public void testToGenericRecord() {
-        OutboundKey key = null;
+        OutboundKeyVIDDate key = null;
         String id = "id";
         long date = 1;
         try {
-            key = new OutboundKey(id, date);
+            key = new OutboundKeyVIDDate(id, date);
         } catch (IOException e) {
             assert(false);
         }

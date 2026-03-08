@@ -20,7 +20,7 @@ public class KafkaRecord implements Serializable {
     private Optional<DeserializationError> keyDeserializationError = Optional.empty();
     private Optional<DeserializationError> valueDeserializationError = Optional.empty();
 
-    public KafkaRecord() {};
+    //TODO: override toString to allow for ease printing out
 
     public KafkaRecord(GenericRecord key, GenericRecord value, boolean isInbound) {
         this.key = key;

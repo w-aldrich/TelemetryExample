@@ -2,8 +2,8 @@ package com.example;
 
 import com.example.config.AppConfig;
 import com.example.flink.ProcessSpeed;
+import com.example.model.InboundRouter;
 import com.example.model.KafkaRecord;
-import com.example.model.telemetryEnums.TelemetryType;
 import com.example.util.deserialization.GenericDeserialization;
 import com.example.util.serialization.GenericSerialization;
 import org.apache.avro.generic.GenericData;
@@ -15,15 +15,11 @@ import org.apache.flink.formats.avro.utils.AvroKryoSerializerUtils;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.*;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.util.Collector;
-import org.apache.flink.util.OutputTag;
+
+import java.time.Duration;
 
 
 public class TelemetryJob {
-
-    private static final OutputTag<KafkaRecord> speedInfo = new OutputTag<KafkaRecord>("speedInfo"){};
-    private static final OutputTag<KafkaRecord> dlq = new OutputTag<KafkaRecord>("dlq"){};
 
     public static void main(String[] args) throws Exception {
         run(StreamExecutionEnvironment.getExecutionEnvironment());
@@ -36,16 +32,30 @@ public class TelemetryJob {
         AppConfig appConfig = new AppConfig();
 
         env.enableCheckpointing(appConfig.getCheckpointInterval(), CheckpointingMode.EXACTLY_ONCE);
-        // TODO: Add backend
+
+        // TODO: Add backend, everything is in memory right now
 //        env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
+
+        // TODO: Update once application is ready. Should have higher than 1 parallelism.
         env.setParallelism(1);
 
-        // TODO: Remove once application is ready
+        // TODO: Remove once application is ready. This allows for complete failure if something goes wrong.
         env.setRestartStrategy(
                 org.apache.flink.api.common.restartstrategy.RestartStrategies.noRestart()
         );
 
-        // Needed for GenericRecord deserialization
+        /*
+        The following are needed for GenericRecord Deserialization.
+        Also ensure you have the following in your pom.xml file
+        --add-opens java.base/java.util=ALL-UNNAMED
+        --add-opens java.base/java.lang=ALL-UNNAMED
+        --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+        --add-opens java.base/java.io=ALL-UNNAMED
+        --add-opens java.base/java.net=ALL-UNNAMED
+        --add-opens java.base/java.nio=ALL-UNNAMED
+        --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+        These are needed due to some issues with serialization/deserialization
+         */
         AvroKryoSerializerUtils avroKryoSerializerUtils = new AvroKryoSerializerUtils();
         avroKryoSerializerUtils.addAvroSerializersIfRequired(env.getConfig(), GenericData.Record.class);
 
@@ -54,54 +64,51 @@ public class TelemetryJob {
         String inboundTopic = appConfig.getInboundTopic();
 
         KafkaSource<KafkaRecord> source =
-                KafkaSource.<KafkaRecord>builder()
+            KafkaSource.<KafkaRecord>builder()
+            .setBootstrapServers(bootstrapServers)
+            .setTopics(inboundTopic)
+            .setGroupId(appConfig.getConsumerGroupId())
+            .setStartingOffsets(OffsetsInitializer.earliest())
+            .setDeserializer(new GenericDeserialization(
+                    inboundTopic,
+                    schemaRegUrl
+            ))
+            .build();
+
+        // Outbound topic for `SpeedInformation` class
+        KafkaSink<KafkaRecord> speedSink =
+            KafkaSink.<KafkaRecord>builder()
                 .setBootstrapServers(bootstrapServers)
-                .setTopics(inboundTopic)
-                .setGroupId(appConfig.getConsumerGroupId())
-                .setStartingOffsets(OffsetsInitializer.earliest())
-                .setDeserializer(new GenericDeserialization(
-                        inboundTopic,
-                        schemaRegUrl
+                .setRecordSerializer(new GenericSerialization(
+                    appConfig.getOutboundSpeedTopic(),
+                    schemaRegUrl
                 ))
                 .build();
 
-        KafkaSink<KafkaRecord> speedSink =
-                KafkaSink.<KafkaRecord>builder()
-                        .setBootstrapServers(bootstrapServers)
-                        .setRecordSerializer(new GenericSerialization(
-                            appConfig.getOutboundSpeedTopic(),
-                            schemaRegUrl
-                        ))
-                        .build();
+        /*
+        Split the single telemetry topic into discrete units to work against.
+        This allows us to break up the work and potentially have many outbound topics from the single inbound.
+        This would be useful if downstream teams needed any specific information broken out. It takes the work off of those teams,
+        and allows it to be real time coming through Flink.
+         */
+        InboundRouter inboundRouter = new InboundRouter();
 
-        // TODO: Add watermarks
+        // TODO: Check this is the watermark you want
+        WatermarkStrategy<KafkaRecord> watermarkStrategy =
+                WatermarkStrategy.<KafkaRecord>forBoundedOutOfOrderness(Duration.ofHours(24))
+                        .withTimestampAssigner((event, timestamp) -> (long) event.getValue().get("eventTimestamp"));
+
         SingleOutputStreamOperator<KafkaRecord> router =
-            env.fromSource(source, WatermarkStrategy.noWatermarks(), inboundTopic)
-                .process(new ProcessFunction<KafkaRecord, KafkaRecord>() {
-                    @Override
-                    public void processElement(KafkaRecord kafkaRecord, ProcessFunction<KafkaRecord, KafkaRecord>.Context context, Collector<KafkaRecord> collector) throws Exception {
-                        if(kafkaRecord.hasDeserializationError()) {
-                            context.output(dlq, kafkaRecord);
-                        } else if (kafkaRecord.isTombstoneRecord()) {
-                            //TODO implement tombstone, sending to DLQ for now
-                            context.output(dlq, kafkaRecord);
-                        } else {
-                            TelemetryType t = TelemetryType.fromGRToType(kafkaRecord.getValue());
-                            switch (t) {
-                                case SPEED, ACCELERATION, ODOMETER -> context.output(speedInfo, kafkaRecord);
-                            }
-                        }
-                    }
-                });
+            env.fromSource(source, watermarkStrategy, inboundTopic)
+                .process(inboundRouter);
 
-
-        router.getSideOutput(speedInfo)
+        router.getSideOutput(inboundRouter.getSpeedInfoOutputTag())
             .keyBy(KafkaRecord::getRoutingKey)
             .process(new ProcessSpeed())
             .sinkTo(speedSink);
 
         // TODO: implement DLQ
-        // router.getSideOutput(dlq);
+//         router.getSideOutput(inboundRouter.getDlqOutputTag());
 
         env.execute("Vehicle Telemetry Processing Job");
     }

@@ -1,0 +1,17 @@
+# IntelliJ project files
+.idea/
+*.iml
+
+# Build artifacts
+/target/    # For Maven projects
+
+# Compiled output
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Misc
+*.swp
