@@ -23,7 +23,7 @@ public class SpeedInformationTest {
 
     private boolean testKey(String vehicleId, long date, GenericRecord gr) {
         return gr.get("vehicleId").toString().equals(vehicleId) &&
-        Long.parseLong(gr.get("date").toString()) == date;
+                Long.parseLong(gr.get("date").toString()) == date;
     }
 
     private boolean testAvgSpeed(double expectedSpeed, GenericRecord gr) {
@@ -35,11 +35,11 @@ public class SpeedInformationTest {
     }
 
     private boolean testAvgY(double expectedAvg, GenericRecord gr) {
-        return Double.parseDouble(gr.get("averageXAcceleration").toString()) == expectedAvg;
+        return Double.parseDouble(gr.get("averageYAcceleration").toString()) == expectedAvg;
     }
 
     private boolean testAvgZ(double expectedAvg, GenericRecord gr) {
-        return Double.parseDouble(gr.get("averageXAcceleration").toString()) == expectedAvg;
+        return Double.parseDouble(gr.get("averageZAcceleration").toString()) == expectedAvg;
     }
 
     private boolean testTotalKmDriven(double expectedTotal, GenericRecord gr) {
@@ -110,8 +110,119 @@ public class SpeedInformationTest {
         assert(testAvgSpeed(expectedAverage, value));
     }
 
-    // TODO: Test X
-    // TODO: Test Y
-    // TODO: Test Z
-    // TODO: Test KM Driven
+    // Should return the first X/Y/Z values passed in (count <= 1 returns sum directly)
+    @Test
+    public void testAccelerationOnly() {
+        String id = RandomGenerator.generateString(10);
+        long date = (long) RandomGenerator.generateInt(50000);
+        double x = RandomGenerator.generateInt(100);
+        double y = RandomGenerator.generateInt(100);
+        double z = RandomGenerator.generateInt(100);
+
+        SpeedInformation speedInformation = setup(id, date);
+        speedInformation.setAcc(x, y, z);
+
+        KafkaRecord kr = speedInformation.toKafkaRecord();
+        GenericRecord value = kr.getValue();
+        assert(testKey(id, date, kr.getKey()));
+        assert(testAvgX(x, value));
+        assert(testAvgY(y, value));
+        assert(testAvgZ(z, value));
+    }
+
+    // Should return average X across two readings
+    @Test
+    public void testAccelerationXAvg() {
+        String id = RandomGenerator.generateString(10);
+        long date = (long) RandomGenerator.generateInt(50000);
+        double x1 = RandomGenerator.generateInt(100);
+        double x2 = RandomGenerator.generateInt(100);
+
+        SpeedInformation speedInformation = setup(id, date);
+        speedInformation.setAcc(x1, 0, 0);
+        speedInformation.setAcc(x2, 0, 0);
+
+        double expectedAvg = (x1 + x2) / 2;
+
+        KafkaRecord kr = speedInformation.toKafkaRecord();
+        GenericRecord value = kr.getValue();
+        assert(testKey(id, date, kr.getKey()));
+        assert(testAvgX(expectedAvg, value));
+    }
+
+    // Should return average Y across two readings
+    @Test
+    public void testAccelerationYAvg() {
+        String id = RandomGenerator.generateString(10);
+        long date = (long) RandomGenerator.generateInt(50000);
+        double y1 = RandomGenerator.generateInt(100);
+        double y2 = RandomGenerator.generateInt(100);
+
+        SpeedInformation speedInformation = setup(id, date);
+        speedInformation.setAcc(0, y1, 0);
+        speedInformation.setAcc(0, y2, 0);
+
+        double expectedAvg = (y1 + y2) / 2;
+
+        KafkaRecord kr = speedInformation.toKafkaRecord();
+        GenericRecord value = kr.getValue();
+        assert(testKey(id, date, kr.getKey()));
+        assert(testAvgY(expectedAvg, value));
+    }
+
+    // Should return average Z across two readings
+    @Test
+    public void testAccelerationZAvg() {
+        String id = RandomGenerator.generateString(10);
+        long date = (long) RandomGenerator.generateInt(50000);
+        double z1 = RandomGenerator.generateInt(100);
+        double z2 = RandomGenerator.generateInt(100);
+
+        SpeedInformation speedInformation = setup(id, date);
+        speedInformation.setAcc(0, 0, z1);
+        speedInformation.setAcc(0, 0, z2);
+
+        double expectedAvg = (z1 + z2) / 2;
+
+        KafkaRecord kr = speedInformation.toKafkaRecord();
+        GenericRecord value = kr.getValue();
+        assert(testKey(id, date, kr.getKey()));
+        assert(testAvgZ(expectedAvg, value));
+    }
+
+    // First odometer reading sets the baseline — totalKmDriven should be 0
+    @Test
+    public void testKmDrivenFirstReadingOnly() {
+        String id = RandomGenerator.generateString(10);
+        long date = (long) RandomGenerator.generateInt(50000);
+        double startKm = RandomGenerator.generateInt(200000);
+
+        SpeedInformation speedInformation = setup(id, date);
+        speedInformation.setKmDriven(startKm);
+
+        KafkaRecord kr = speedInformation.toKafkaRecord();
+        GenericRecord value = kr.getValue();
+        assert(testKey(id, date, kr.getKey()));
+        assert(testTotalKmDriven(0, value));
+    }
+
+    // Second odometer reading should produce totalKmDriven = currentKm - startKm
+    @Test
+    public void testKmDrivenTwoReadings() {
+        String id = RandomGenerator.generateString(10);
+        long date = (long) RandomGenerator.generateInt(50000);
+        double startKm = RandomGenerator.generateInt(100000) + 2; // ensure > 1 so getTotalDriven doesn't zero out
+        double endKm = startKm + RandomGenerator.generateInt(500) + 1;
+
+        SpeedInformation speedInformation = setup(id, date);
+        speedInformation.setKmDriven(startKm);
+        speedInformation.setKmDriven(endKm);
+
+        double expectedTotal = endKm - startKm;
+
+        KafkaRecord kr = speedInformation.toKafkaRecord();
+        GenericRecord value = kr.getValue();
+        assert(testKey(id, date, kr.getKey()));
+        assert(testTotalKmDriven(expectedTotal, value));
+    }
 }

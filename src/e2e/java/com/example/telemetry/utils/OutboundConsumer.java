@@ -11,15 +11,35 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 
 public class OutboundConsumer {
 
     private final KafkaConsumer<GenericRecord, GenericRecord> consumer;
     private final String topic;
+    private final Optional<String> vehicleIdFilter;
 
+    /**
+     * Creates a consumer that returns all records from the topic, regardless of key.
+     * Useful when asserting across multiple vehicle IDs (e.g. key isolation tests).
+     */
     public OutboundConsumer(String bootstrapServers, String schemaRegistryUrl, String topic, String groupId) {
+        this(bootstrapServers, schemaRegistryUrl, topic, groupId, Optional.empty());
+    }
+
+    /**
+     * Creates a consumer that only returns records whose outbound key matches the given vehicleId.
+     * This ensures each test only sees its own records, even when the topic contains
+     * records from other concurrent or prior tests.
+     */
+    public OutboundConsumer(String bootstrapServers, String schemaRegistryUrl, String topic, String groupId, String vehicleId) {
+        this(bootstrapServers, schemaRegistryUrl, topic, groupId, Optional.of(vehicleId));
+    }
+
+    private OutboundConsumer(String bootstrapServers, String schemaRegistryUrl, String topic, String groupId, Optional<String> vehicleIdFilter) {
         this.topic = topic;
+        this.vehicleIdFilter = vehicleIdFilter;
 
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -35,10 +55,27 @@ public class OutboundConsumer {
         consumer.subscribe(List.of(topic));
     }
 
-    // TODO: Add key value to look for to limit results
-    public List<KafkaRecord> consume(
-            int expectedCount, long timeoutMs) {
+    /**
+     * Returns true if the given record passes the vehicleId filter.
+     * Always returns true when no filter is set.
+     */
+    private boolean matchesFilter(ConsumerRecord<GenericRecord, GenericRecord> record) {
+        if (vehicleIdFilter.isEmpty()) {
+            return true;
+        }
+        if (record.key() == null) {
+            return false;
+        }
+        Object vehicleId = record.key().get("vehicleId");
+        return vehicleId != null && vehicleIdFilter.get().equals(vehicleId.toString());
+    }
 
+    /**
+     * Polls until {@code expectedCount} matching records have been collected or
+     * {@code timeoutMs} elapses, whichever comes first.
+     * Non-matching records (filtered by vehicleId) are silently skipped.
+     */
+    public List<KafkaRecord> consume(int expectedCount, long timeoutMs) {
         List<KafkaRecord> collected = new ArrayList<>();
         long deadline = System.currentTimeMillis() + timeoutMs;
 
@@ -50,8 +87,9 @@ public class OutboundConsumer {
                     consumer.poll(Duration.ofMillis(Math.min(remaining, 500)));
 
             for (ConsumerRecord<GenericRecord, GenericRecord> record : records) {
-                // ignore routing key
-                collected.add(new KafkaRecord(record.key(), record.value(), false));
+                if (matchesFilter(record)) {
+                    collected.add(new KafkaRecord(record.key(), record.value(), false));
+                }
             }
         }
 
@@ -59,7 +97,8 @@ public class OutboundConsumer {
     }
 
     /**
-     * Polls once with a short timeout — useful for asserting no records are present.
+     * Polls until {@code timeoutMs} elapses, collecting all matching records.
+     * Useful for asserting no records are present for a given vehicleId.
      */
     public List<KafkaRecord> consumeAvailable(long timeoutMs) {
         return consume(Integer.MAX_VALUE, timeoutMs);

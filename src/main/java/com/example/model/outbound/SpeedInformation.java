@@ -14,16 +14,16 @@ public class SpeedInformation implements Outbound {
     //TODO: Override toString for debugging purposes
 
     private OutboundKeyVIDDate outboundKeyVIDDate;
-    private int sumX = 0;
-    private int countX = 0;
-    private int sumY = 0;
-    private int countY = 0;
-    private int sumZ = 0;
-    private int countZ = 0;
-    private int sumSpeed = 0;
-    private int countSpeed = 0;
-    private double startKm = 0;
-    private double currentKm = 0;
+    private double sumX = 0.0;
+    private double countX = 0.0;
+    private double sumY = 0.0;
+    private double countY = 0.0;
+    private double sumZ = 0.0;
+    private double countZ = 0.0;
+    private double sumSpeed = 0.0;
+    private double countSpeed = 0.0;
+    private double startKm = 0.0;
+    private double currentKm = 0.0;
     private final String valueSchemaString = new Schema.Parser().parse(new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/valueSpeedInformation.avsc").toPath())).toString()).toString();
 
     public SpeedInformation(String vehicleId, long date) throws IOException {
@@ -53,17 +53,17 @@ public class SpeedInformation implements Outbound {
     }
 
     private double getXAvg() {
-        return countX <= 1 ? sumX : (double) sumX/countX;
+        return countX <= 1 ? sumX : sumX/countX;
     }
     private double getYAvg() {
-        return countY <= 1 ? sumY : (double) sumY/countY;
+        return countY <= 1 ? sumY : sumY/countY;
     }
     private double getZAvg() {
-        return countZ <= 1 ? sumZ : (double) sumZ/countZ;
+        return countZ <= 1 ? sumZ : sumZ/countZ;
     }
 
     private double getSpeedAvg() {
-        return countSpeed <= 1 ? sumSpeed : (double) sumSpeed/countSpeed;
+        return countSpeed <= 1 ? sumSpeed : sumSpeed/countSpeed;
     }
 
     private double getTotalDriven() {
