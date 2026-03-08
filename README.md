@@ -14,20 +14,20 @@ All inbound and outbound messages are serialized with **Avro** and governed by *
 
 ```
                         ┌──────────────────────────────────────────────────┐
-                        │                  Apache Flink Job                 │
-                        │                                                   │
+                        │                  Apache Flink Job                │
+                        │                                                  │
 Kafka Inbound Topic ───►│  GenericDeserialization                          │
 (Avro, 15 types)        │         │                                        │
                         │         ▼                                        │
                         │   InboundRouter (ProcessFunction)                │
                         │    ├── hasDeserializationError? ──► dlq side out │──► (TODO: DLQ Kafka sink)
                         │    ├── isTombstone?             ──► dlq side out │
-                        │    │                                              │
+                        │    │                                             │
                         │    └── TelemetryType switch:                     │
                         │         ├── SPEED   ┐                            │
                         │         ├── ACCEL   ├──► speedInfo side output   │
                         │         ├── ODOM    ┘         │                  │
-                        │         └── (12 other types) ─► (no output)     │
+                        │         └── (12 other types) ─► (no output)      │
                         │                               │                  │
                         │              keyBy(vehicleId_date)               │
                         │                               │                  │
