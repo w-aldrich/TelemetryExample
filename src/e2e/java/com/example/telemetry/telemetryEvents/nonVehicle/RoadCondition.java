@@ -1,6 +1,6 @@
 package com.example.telemetry.telemetryEvents.nonVehicle;
 
-import com.example.telemetry.utils.RandomGenerator;
+import com.example.utils.RandomGenerator;
 import com.example.telemetry.telemetryEvents.BaseEvent;
 
 public class RoadCondition extends BaseEvent {

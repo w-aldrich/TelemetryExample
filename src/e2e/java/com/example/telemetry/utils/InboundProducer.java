@@ -6,7 +6,7 @@ import com.example.telemetry.telemetryEvents.BaseEvent;
 import com.example.telemetry.telemetryEvents.Key;
 import com.example.telemetry.telemetryEvents.nonVehicle.*;
 import com.example.telemetry.telemetryEvents.vehicle.*;
-import com.example.telemetry.utils.RandomGenerator;
+import com.example.utils.RandomGenerator;
 import com.example.util.helpers.GenericRecordHelper;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.generic.GenericData;

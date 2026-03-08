@@ -1,7 +1,7 @@
 package com.example.telemetry.telemetryEvents;
 
 import com.example.model.telemetryEnums.TelemetryType;
-import com.example.telemetry.utils.RandomGenerator;
+import com.example.utils.RandomGenerator;
 
 public class BaseEvent {
     String eventId;

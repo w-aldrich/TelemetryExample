@@ -9,7 +9,7 @@ import com.example.telemetry.infraSetup.SchemaRegistryHelper;
 import com.example.telemetry.telemetryEvents.Key;
 import com.example.telemetry.utils.InboundProducer;
 import com.example.telemetry.utils.OutboundConsumer;
-import com.example.telemetry.utils.RandomGenerator;
+import com.example.utils.RandomGenerator;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
