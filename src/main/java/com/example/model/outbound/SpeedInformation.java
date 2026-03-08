@@ -24,7 +24,14 @@ public class SpeedInformation implements Outbound {
     private double countSpeed = 0.0;
     private double startKm = 0.0;
     private double currentKm = 0.0;
-    private final String valueSchemaString = new Schema.Parser().parse(new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/valueSpeedInformation.avsc").toPath())).toString()).toString();
+    // TODO: Fix this
+    private final String valueSchemaString =
+            new Schema.Parser().parse(
+                new Schema.Parser().parse(
+                    Files.readString(new File("schemas/outboundAvsc/valueSpeedInformation.avsc").toPath()
+                    )
+                ).toString()
+            ).toString();
 
     public SpeedInformation(String vehicleId, long date) throws IOException {
         outboundKeyVIDDate = new OutboundKeyVIDDate(vehicleId, date);

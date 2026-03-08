@@ -10,6 +10,7 @@ import java.nio.file.Files;
 
 public class OutboundKeyVIDDate {
 
+    //TODO: Fix this
     String keySchema = new Schema.Parser().parse(Files.readString(new File("schemas/outboundAvsc/key.avsc").toPath())).toString();
     String vehicleId;
     long date;

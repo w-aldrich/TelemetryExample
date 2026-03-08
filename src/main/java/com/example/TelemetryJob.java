@@ -94,10 +94,12 @@ public class TelemetryJob {
         InboundRouter inboundRouter = new InboundRouter();
 
         // TODO: Check this is the watermark you want
+        // Allow for 5 minute delay
         WatermarkStrategy<KafkaRecord> watermarkStrategy =
-                WatermarkStrategy.<KafkaRecord>forBoundedOutOfOrderness(Duration.ofHours(24))
+                WatermarkStrategy.<KafkaRecord>forBoundedOutOfOrderness(Duration.ofMinutes(5))
                         .withTimestampAssigner((event, timestamp) -> (long) event.getValue().get("eventTimestamp"));
 
+        // TODO: Ensure that old events don't create new state
         SingleOutputStreamOperator<KafkaRecord> router =
             env.fromSource(source, watermarkStrategy, inboundTopic)
                 .process(inboundRouter);

@@ -19,9 +19,11 @@ public class ProcessSpeed extends KeyedProcessFunction<String, KafkaRecord, Kafk
     @Override
     public void open(Configuration parameters) {
         try {
+            // TODO: Once backend is updated to rocksdb update cleanup
+            // TODO: match config ttl to this
             StateTtlConfig ttlConfig = StateTtlConfig
                     .newBuilder(Time.hours(24))
-                    .setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite)
+                    .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
                     .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
                     .cleanupFullSnapshot()
                     .build();
@@ -36,6 +38,8 @@ public class ProcessSpeed extends KeyedProcessFunction<String, KafkaRecord, Kafk
             System.out.printf("[PROCESS_SPEED] ERROR %s", e.getMessage());
         }
     }
+
+    // TODO: The TTL is not event based, implement state cleanup based off of an event time timer
 
     @Override
     public void processElement(
